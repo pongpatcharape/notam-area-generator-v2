@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AeroFocus NOTAM - Mission Control</title>
+
+<!-- Material Symbols & Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<!-- Tom Select CSS -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "surface": "#10131b",
+                    "surface-slate": "#1E222A",
+                    "aviation-deep-blue": "#0E1117",
+                    "primary": "#adc7ff",
+                    "primary-container": "#4a8eff",
+                    "on-primary-container": "#00285b",
+                    "on-surface": "#e0e2ed",
+                    "on-surface-variant": "#c1c6d7",
+                    "outline-variant": "#414754",
+                    "background": "#10131b"
+                }
+            }
+        }
+    }
+</script>
+<style>
+    .glass-panel {
+        background: rgba(30, 34, 42, 0.95);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid #414754;
+    }
+    #map {
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+    }
+
+    /* 🎯 ปรับแต่ง Tom Select ให้เป็นช่องสี่เหลี่ยมโค้งมนโทนเข้มเนียนๆ แบบรูปที่ 2 */
+    .ts-control {
+        background-color: #111827 !important; /* เข้มกลมกลืนแบบรูปที่ 2 */
+        border: 1px solid #374151 !important;
+        border-radius: 0.5rem !important;
+        padding: 8px 12px !important;
+        color: #ffffff !important;
+        min-height: 42px;
+    }
+    .ts-control .item {
+        background-color: #ef4444 !important; /* Tag สีแดงเมื่อเลือก */
+        color: #ffffff !important;
+        border-radius: 4px !important;
+        padding: 2px 8px !important;
+        font-weight: 500;
+    }
+    .ts-control .item .remove {
+        border-left: none !important;
+        color: #ffffff !important;
+    }
+    .ts-dropdown {
+        background-color: #1E222A !important;
+        border: 1px solid #414754 !important;
+        color: #e0e2ed !important;
+        border-radius: 0.5rem;
+        z-index: 9999 !important;
+    }
+    .ts-dropdown .option:hover, .ts-dropdown .active {
+        background-color: #374151 !important;
+        color: #ffffff !important;
+    }
+    .ts-control input {
+        color: #ffffff !important;
+    }
+</style>
+</head>
+<body class="bg-aviation-deep-blue text-on-surface font-body-sm h-screen overflow-hidden flex flex-col">
+
+<!-- TopNavBar -->
+<nav class="top-0 bg-aviation-deep-blue border-b border-outline-variant z-50">
+<div class="flex justify-between items-center w-full px-6 py-3 h-16">
+    <div class="flex items-center gap-4">
+        <span class="text-xl font-bold text-primary">NOTAM AREA GENERATOR</span>
+    </div>
+    <div class="flex items-center gap-4 text-on-surface-variant">
+        <button class="hover:text-primary transition-colors p-2 rounded-full">
+            <span class="material-symbols-outlined">account_circle</span>
+        </button>
+    </div>
+</div>
+</nav>
+
+<!-- Main Layout Container -->
+<div class="flex flex-1 overflow-hidden relative">
+    
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-16 bottom-0 w-[280px] z-40 flex flex-col p-4 bg-surface-slate border-r border-outline-variant hidden md:flex">
+        <div class="mb-6 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold">
+                <span class="material-symbols-outlined">rocket_launch</span>
+            </div>
+            <div>
+                <h2 class="font-bold text-on-surface">Mission Control</h2>
+                <p class="text-xs text-on-surface-variant uppercase">Aerial Photography Ops</p>
+            </div>
+        </div>
+        <nav class="flex-1 flex flex-col gap-2">
+            <button onclick="toggleGeneratorPanel()" class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 w-full text-left font-semibold">
+                <span class="material-symbols-outlined">radar</span>
+                <span>Generator</span>
+            </button>
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 relative md:ml-[280px] bg-background flex flex-col h-full overflow-hidden">
+        
+        <!-- 🗺️ Leaflet Map -->
+        <div id="map"></div>
+
+        <!-- Floating Input Panel -->
+        <div id="generatorPanel" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl">
+                
+                <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+                    <h3 class="text-xs font-bold text-on-surface-variant uppercase">PROJECT DETAILS</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-gray-400 font-mono">L7018 SYS</span>
+                        <button onclick="toggleGeneratorPanel()" class="text-on-surface-variant hover:text-white">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Project Details -->
+                <section class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface">Project Name</label>
+                        <input id="projectName" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" value="Alpha-Tango Aerial">
+                    </div>
+                    
+                    <!-- 🎯 ตรงนี้เปลี่ยนเป็นแบบรูปที่ 2 สวยงามสมใจครับ -->
+                 
+<div class="flex flex-col gap-1">
+    <label class="text-xs text-on-surface font-medium">L7018 SHEET:</label>
+    <select id="sheetSelect" multiple placeholder="พิมพ์ค้นหา หรือเลือกระวาง..." class="w-full"></select>
+</div>
+                </section>
+
+                <!-- Area Parameters -->
+                <section class="flex flex-col gap-3">
+                    <h3 class="text-xs font-bold text-on-surface-variant uppercase border-b border-outline-variant pb-2">AREA PARAMETERS</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-on-surface">N-S (NM)</label>
+                            <input id="nsNm" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" step="0.5" type="number" value="5.0">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-on-surface">W-E (NM)</label>
+                            <input id="weNm" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" step="0.5" type="number" value="3.0">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col gap-2 mt-2">
+                    <button onclick="calculateFlightArea()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md">
+                        <span class="material-symbols-outlined text-[18px]">public</span>
+                        Generate Flight Area
+                    </button>
+
+                    <button id="downloadBtn" onclick="downloadZipPackage()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm shadow-md">
+                        <span class="material-symbols-outlined text-[18px]">download</span>
+                        Download KML / Excel ZIP
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- Leaflet JS Script -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Tom Select JS -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+<script>
+    let rawGeoJSONData = null;
+    let tomSelectControl = null;
+    let geojsonIndexLayer = null; // ชั้นข้อมูล Grid ระวาง
+    let innerLayer = null;        // เส้นขอบ Merged Block สีเหลือง
+    let bufferLayer = null;       // เส้นขอบ NOTAM Buffer สีแดง
+    let map = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // 1. สร้าง แผนที่ Leaflet
+        map = L.map('map').setView([13.7563, 100.5018], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 2. ผูก Event ปุ่มกด Toggle Panel
+        const genBtn = document.getElementById('toggleGeneratorBtn');
+        if (genBtn) {
+            genBtn.addEventListener('click', toggleGeneratorPanel);
+        }
+
+        // 3. สร้าง TomSelect
+        const selectEl = document.getElementById('sheetSelect');
+        if (selectEl) {
+            tomSelectControl = new TomSelect('#sheetSelect', {
+                plugins: ['remove_button', 'clear_button'],
+                create: false,
+                maxItems: null,
+                placeholder: 'พิมพ์ค้นหา หรือเลือกระวาง...'
+            });
+        }
+
+        // 4. โหลด GeoJSON (แสดง Index บนแผนที่ + ยัดเข้า Dropdown)
+        fetch('/index_l7018.json')
+            .then(res => {
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                return res.json();
+            })
+            .then(data => {
+                rawGeoJSONData = data;
+
+                if (data && data.features) {
+                    // 📌 แก้ไขข้อ 1: แสดงตัว Index ระวางบนแผนที่ Leaflet
+                    geojsonIndexLayer = L.geoJSON(data, {
+                        style: {
+                            color: '#2563eb',
+                            weight: 1,
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.05
+                        },
+                        onEachFeature: function(feature, layer) {
+                            const props = feature.properties || {};
+                            const sheetNo = props.Sheet_dash || props.sheet_dash || props.SHEET_DASH;
+                            if (sheetNo) {
+                                layer.bindPopup(`<b>ระวาง L7018:</b> ${sheetNo}`);
+                            }
+                        }
+                    }).addTo(map);
+
+                    // ยัดรายการระวางเข้า Dropdown
+                    const sheetOptions = [];
+                    data.features.forEach(f => {
+                        const props = f.properties || {};
+                        const sheetNo = props.Sheet_dash || props.sheet_dash || props.SHEET_DASH;
+                        if (sheetNo && !sheetOptions.includes(sheetNo)) {
+                            sheetOptions.push(sheetNo);
+                        }
+                    });
+                    sheetOptions.sort();
+                    if (tomSelectControl) {
+                        sheetOptions.forEach(s => {
+                            tomSelectControl.addOption({ value: s, text: s });
+                        });
+                    }
+                }
+            })
+            .catch(err => console.error("Error loading GeoJSON:", err));
+    });
+
+    function toggleGeneratorPanel() {
+        const panel = document.getElementById('generatorPanel');
+        if (panel) panel.classList.toggle('hidden');
+    }
+
+    function getSelectedSheets() {
+        if (!tomSelectControl) return [];
+        const val = tomSelectControl.getValue();
+        if (!val) return [];
+        return Array.isArray(val) ? val : [val];
+    }
+
+    // 📌 ดึงชื่อโครงการปัจจุบันจาก Input
+    function getProjectName() {
+        const inputEl = document.getElementById('projectName');
+        if (inputEl && inputEl.value.trim() !== "") {
+            return inputEl.value.trim().replace(/\s+/g, '_');
+        }
+        return 'NOTAM_PROJECT';
+    }
+
+    // คำนวณ Bounding Box จากระวางที่เลือก
+    function getMergedBoundsOfSelectedSheets(selectedSheets) {
+        if (!rawGeoJSONData || !rawGeoJSONData.features) return null;
+
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        let found = false;
+
+        rawGeoJSONData.features.forEach(f => {
+            const props = f.properties || {};
+            const sheetNo = props.Sheet_dash || props.sheet_dash || props.SHEET_DASH;
+            if (selectedSheets.includes(sheetNo)) {
+                found = true;
+                const geom = f.geometry;
+                const coords = geom.type === 'Polygon' ? geom.coordinates[0] : geom.coordinates.flat(1);
+                coords.forEach(pt => {
+                    const lng = pt[0], lat = pt[1];
+                    if (lat < minLat) minLat = lat;
+                    if (lat > maxLat) maxLat = lat;
+                    if (lng < minLng) minLng = lng;
+                    if (lng > maxLng) maxLng = lng;
+                });
+            }
+        });
+
+        if (!found) return null;
+        return { minLat, maxLat, minLng, maxLng };
+    }
+
+    // 🚀 คำนวณพิกัด
+    async function calculateFlightArea() {
+        const selectedSheets = getSelectedSheets();
+        if (!selectedSheets || selectedSheets.length === 0) {
+            alert("กรุณาเลือกระวาง L7018 อย่างน้อย 1 ระวางครับสุดหล่อ!");
+            return;
+        }
+
+        const bbox = getMergedBoundsOfSelectedSheets(selectedSheets);
+        if (!bbox) {
+            alert("ไม่พบข้อมูลพิกัดของระวางที่เลือกในไฟล์ GeoJSON ครับ");
+            return;
+        }
+
+        const ns_nm = parseFloat(document.getElementById('nsNm').value || 5.0);
+        const we_nm = parseFloat(document.getElementById('weNm').value || 3.0);
+
+        const ns_deg = ns_nm / 60.0;
+        const we_deg = we_nm / 60.0;
+
+        const inner_nw = [bbox.maxLat, bbox.minLng];
+        const inner_ne = [bbox.maxLat, bbox.maxLng];
+        const inner_se = [bbox.minLat, bbox.maxLng];
+        const inner_sw = [bbox.minLat, bbox.minLng];
+
+        const buffer_nw = [bbox.maxLat + ns_deg, bbox.minLng - we_deg];
+        const buffer_ne = [bbox.maxLat + ns_deg, bbox.maxLng + we_deg];
+        const buffer_se = [bbox.minLat - ns_deg, bbox.maxLng + we_deg];
+        const buffer_sw = [bbox.minLat - ns_deg, bbox.minLng - we_deg];
+
+        // 📌 แก้ไขข้อ 2: อ่านชื่อโครงการล่าสุดส่งไปเสมอ
+        const currentProjectName = getProjectName();
+
+        const payload = {
+            project_name: currentProjectName,
+            sheets: selectedSheets,
+            inner_nw, inner_ne, inner_se, inner_sw,
+            buffer_nw, buffer_ne, buffer_se, buffer_sw
+        };
+
+        try {
+            const res = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error("ส่งข้อมูลคำนวณไม่สำเร็จ");
+
+            // ลบเส้นเดิม
+            if (innerLayer) map.removeLayer(innerLayer);
+            if (bufferLayer) map.removeLayer(bufferLayer);
+
+            // 1. วาด Buffer สีแดง
+            bufferLayer = L.polygon([buffer_nw, buffer_ne, buffer_se, buffer_sw], {
+                color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
+            }).addTo(map);
+
+            // 2. วาด Inner สีเหลือง
+            innerLayer = L.polygon([inner_nw, inner_ne, inner_se, inner_sw], {
+                color: '#eab308', fillColor: '#eab308', fillOpacity: 0.2, weight: 3
+            }).addTo(map);
+
+            map.fitBounds(bufferLayer.getBounds(), { padding: [30, 30] });
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) downloadBtn.classList.remove('hidden');
+
+            window.lastPayload = payload;
+
+        } catch (err) {
+            alert("เกิดข้อผิดพลาด: " + err.message);
+        }
+    }
+
+    // 📦 ดาวน์โหลด ZIP
+    async function downloadZipPackage() {
+        if (!window.lastPayload) {
+            alert("กรุณากดคำนวณก่อนดาวน์โหลดครับสุดหล่อ!");
+            return;
+        }
+
+        // 📌 แก้ไขข้อ 2: อัปเดตชื่อโครงการล่าสุดก่อนส่งไปสร้าง ZIP เสมอ
+        window.lastPayload.project_name = getProjectName();
+
+        try {
+            const res = await fetch('/api/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(window.lastPayload)
+            });
+
+            if (!res.ok) throw new Error("เกิดข้อผิดพลาดในการดาวน์โหลด");
+
+            // ดึงชื่อไฟล์จริงจาก Response Header (Content-Disposition) ถ้ามี หรือตั้งจาก JS
+            const contentDisposition = res.headers.get('Content-Disposition');
+            let filename = `${window.lastPayload.project_name}_Package.zip`;
+            
+            if (contentDisposition && contentDisposition.includes('filename=')) {
+                const match = contentDisposition.match(/filename="?([^";]+)"?/);
+                if (match && match[1]) filename = match[1];
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert("ดาวน์โหลดไม่สำเร็จ: " + err.message);
+        }
+    }
+</script>
+
+</body>
+</html>
