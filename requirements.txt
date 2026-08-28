@@ -1,3 +1,5 @@
 Flask
+shapely
+pyproj
 simplekml
 openpyxl
