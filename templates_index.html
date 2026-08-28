@@ -13,12 +13,11 @@
 
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
 <!-- Tom Select CSS -->
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
 <script id="tailwind-config">
     tailwind.config = {
         darkMode: "class",
@@ -41,71 +40,33 @@
     }
 </script>
 <style>
-    .glass-panel {
-        background: rgba(30, 34, 42, 0.95);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid #414754;
-    }
-    #map {
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-    }
-
-    /* 🎯 ปรับแต่ง Tom Select ให้เป็นช่องสี่เหลี่ยมโค้งมนโทนเข้มเนียนๆ แบบรูปที่ 2 */
-    .ts-control {
-        background-color: #111827 !important; /* เข้มกลมกลืนแบบรูปที่ 2 */
-        border: 1px solid #374151 !important;
-        border-radius: 0.5rem !important;
-        padding: 8px 12px !important;
-        color: #ffffff !important;
-        min-height: 42px;
-    }
-    .ts-control .item {
-        background-color: #ef4444 !important; /* Tag สีแดงเมื่อเลือก */
-        color: #ffffff !important;
-        border-radius: 4px !important;
-        padding: 2px 8px !important;
-        font-weight: 500;
-    }
-    .ts-control .item .remove {
-        border-left: none !important;
-        color: #ffffff !important;
-    }
-    .ts-dropdown {
-        background-color: #1E222A !important;
-        border: 1px solid #414754 !important;
-        color: #e0e2ed !important;
-        border-radius: 0.5rem;
-        z-index: 9999 !important;
-    }
-    .ts-dropdown .option:hover, .ts-dropdown .active {
-        background-color: #374151 !important;
-        color: #ffffff !important;
-    }
-    .ts-control input {
-        color: #ffffff !important;
+    .glass-panel { background: rgba(30, 34, 42, 0.95); backdrop-filter: blur(8px); border: 1px solid #414754; }
+    #map { width: 100%; height: 100%; z-index: 0; }
+    .ts-control { background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 0.5rem !important; padding: 8px 12px !important; color: #ffffff !important; min-height: 42px; }
+    .ts-control .item { background-color: #ef4444 !important; color: #ffffff !important; border-radius: 4px !important; padding: 2px 8px !important; font-weight: 500; }
+    .ts-control .item .remove { border-left: none !important; color: #ffffff !important; }
+    .ts-dropdown { background-color: #1E222A !important; border: 1px solid #414754 !important; color: #e0e2ed !important; border-radius: 0.5rem; z-index: 9999 !important; }
+    .ts-dropdown .option:hover, .ts-dropdown .active { background-color: #374151 !important; color: #ffffff !important; }
+    .ts-control input { color: #ffffff !important; }
+    .grid-label {
+        color: #1e3a8a; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-align: center;
+        text-shadow: 1px 1px 2px #ffffff, -1px -1px 2px #ffffff, 1px -1px 2px #ffffff, -1px 1px 2px #ffffff; pointer-events: none;
     }
 </style>
 </head>
 <body class="bg-aviation-deep-blue text-on-surface font-body-sm h-screen overflow-hidden flex flex-col">
 
-<!-- TopNavBar -->
 <nav class="top-0 bg-aviation-deep-blue border-b border-outline-variant z-50">
-<div class="flex justify-between items-center w-full px-6 py-3 h-16">
-    <div class="flex items-center gap-4">
-        <span class="text-xl font-bold text-primary">NOTAM AREA GENERATOR</span>
+    <div class="flex justify-between items-center w-full px-6 py-3 h-16">
+        <div class="flex items-center gap-4">
+            <span class="text-xl font-bold text-primary">NOTAM AREA GENERATOR</span>
+        </div>
+        <div class="flex items-center gap-4 text-on-surface-variant">
+            <button class="hover:text-primary transition-colors p-2 rounded-full"><span class="material-symbols-outlined">account_circle</span></button>
+        </div>
     </div>
-    <div class="flex items-center gap-4 text-on-surface-variant">
-        <button class="hover:text-primary transition-colors p-2 rounded-full">
-            <span class="material-symbols-outlined">account_circle</span>
-        </button>
-    </div>
-</div>
 </nav>
 
-<!-- Main Layout Container -->
 <div class="flex flex-1 overflow-hidden relative">
     
     <!-- Sidebar -->
@@ -119,50 +80,51 @@
                 <p class="text-xs text-on-surface-variant uppercase">Aerial Photography Ops</p>
             </div>
         </div>
+        
         <nav class="flex-1 flex flex-col gap-2">
-            <button onclick="toggleGeneratorPanel()" class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 w-full text-left font-semibold">
-                <span class="material-symbols-outlined">radar</span>
-                <span>Generator</span>
+            <button id="btn-generator" class="flex items-center justify-between bg-primary-container text-on-primary-container rounded-lg px-4 py-3 w-full text-left font-semibold hover:opacity-90 transition-opacity">
+                <div class="flex items-center gap-3"><span class="material-symbols-outlined">radar</span><span>Generator</span></div>
+                <span id="icon-generator" class="material-symbols-outlined transition-transform">expand_more</span>
+            </button>
+            <div id="submenu-generator" class="hidden flex-col gap-2 pl-6 pr-2 py-2">
+                <button id="btn-airplane" class="flex items-center gap-3 bg-[#111827] text-white hover:bg-blue-600 rounded-lg px-4 py-2.5 w-full text-left font-medium border border-outline-variant transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">flight</span><span>Airplane</span>
+                </button>
+                <button id="btn-uav" class="flex items-center gap-3 bg-[#111827] text-white hover:bg-orange-600 rounded-lg px-4 py-2.5 w-full text-left font-medium border border-outline-variant transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">drone</span><span>UAV</span>
+                </button>
+            </div>
+
+            <button id="btn-document" class="flex items-center gap-3 bg-[#111827] text-white hover:bg-[#374151] rounded-lg px-4 py-3 w-full text-left font-semibold border border-outline-variant transition-colors mt-2">
+                <span class="material-symbols-outlined">description</span>
+                <span>Document</span>
             </button>
         </nav>
     </aside>
 
     <!-- Main Content Area -->
     <main class="flex-1 relative md:ml-[280px] bg-background flex flex-col h-full overflow-hidden">
-        
-        <!-- 🗺️ Leaflet Map -->
         <div id="map"></div>
 
-        <!-- Floating Input Panel -->
-        <div id="generatorPanel" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
-            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl">
-                
+        <!-- ✈️ PANEL: AIRPLANE -->
+        <div id="panel-airplane" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-blue-500">
                 <div class="flex justify-between items-center border-b border-outline-variant pb-2">
-                    <h3 class="text-xs font-bold text-on-surface-variant uppercase">PROJECT DETAILS</h3>
-                    <div class="flex items-center gap-2">
-                        <span class="text-[10px] text-gray-400 font-mono">L7018 SYS</span>
-                        <button onclick="toggleGeneratorPanel()" class="text-on-surface-variant hover:text-white">
-                            <span class="material-symbols-outlined text-[18px]">close</span>
-                        </button>
-                    </div>
+                    <h3 class="text-xs font-bold text-on-surface-variant uppercase flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">flight</span> AIRPLANE PROJECT
+                    </h3>
+                    <button class="btn-close-panel text-on-surface-variant hover:text-white transition-colors"><span class="material-symbols-outlined text-[18px]">close</span></button>
                 </div>
-
-                <!-- Project Details -->
                 <section class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Project Name</label>
-                        <input id="projectName" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" value="Alpha-Tango Aerial">
+                        <input id="projectNameAir" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" value="Alpha-Tango Aerial">
                     </div>
-                    
-                    <!-- 🎯 ตรงนี้เปลี่ยนเป็นแบบรูปที่ 2 สวยงามสมใจครับ -->
-                 
-<div class="flex flex-col gap-1">
-    <label class="text-xs text-on-surface font-medium">L7018 SHEET:</label>
-    <select id="sheetSelect" multiple placeholder="พิมพ์ค้นหา หรือเลือกระวาง..." class="w-full"></select>
-</div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface font-medium">L7018 SHEET:</label>
+                        <select id="sheetSelect" multiple placeholder="พิมพ์ค้นหา หรือเลือกระวาง..." class="w-full"></select>
+                    </div>
                 </section>
-
-                <!-- Area Parameters -->
                 <section class="flex flex-col gap-3">
                     <h3 class="text-xs font-bold text-on-surface-variant uppercase border-b border-outline-variant pb-2">AREA PARAMETERS</h3>
                     <div class="grid grid-cols-2 gap-3">
@@ -176,20 +138,59 @@
                         </div>
                     </div>
                 </section>
-
-                <!-- Action Buttons -->
                 <div class="flex flex-col gap-2 mt-2">
                     <button onclick="calculateFlightArea()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md">
-                        <span class="material-symbols-outlined text-[18px]">public</span>
-                        Generate Flight Area
+                        <span class="material-symbols-outlined text-[18px]">public</span> Generate Flight Area
                     </button>
-
-                    <button id="downloadBtn" onclick="downloadZipPackage()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm shadow-md">
-                        <span class="material-symbols-outlined text-[18px]">download</span>
-                        Download KML / Excel ZIP
+                    <button id="downloadBtnAir" onclick="downloadZipPackage()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm shadow-md">
+                        <span class="material-symbols-outlined text-[18px]">download</span> Download KML / Excel ZIP
                     </button>
                 </div>
+            </div>
+        </div>
 
+        <!-- 🚁 PANEL: UAV -->
+        <div id="panel-uav" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500">
+                <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+                    <h3 class="text-xs font-bold text-orange-400 uppercase flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">drone</span> UAV PROJECT DETAILS
+                    </h3>
+                    <button class="btn-close-panel text-on-surface-variant hover:text-white transition-colors"><span class="material-symbols-outlined text-[18px]">close</span></button>
+                </div>
+                <section class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface">Project Name</label>
+                        <input id="projectNameUav" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" value="Drone-Mapping-01">
+                    </div>
+                    
+                    <div class="flex flex-col gap-1 mt-2">
+                        <label class="text-xs text-on-surface font-medium uppercase">Upload KML / GeoJSON</label>
+                        <input type="file" id="uavFileInput" accept=".kml,.geojson" class="block w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-500/20 file:text-orange-400 hover:file:bg-orange-500/30 bg-[#111827] rounded-lg border border-gray-700 cursor-pointer">
+                    </div>
+                </section>
+
+                <section class="flex flex-col gap-3">
+                    <h3 class="text-xs font-bold text-on-surface-variant uppercase border-b border-outline-variant pb-2">AREA BUFFER</h3>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface">Buffer Distance (Meters)</label>
+                        <input id="uavBufferMeters" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" step="10" type="number" value="50">
+                        <span class="text-[10px] text-orange-300 mt-1">🚁 คลิกบนแผนที่เพื่อสร้างมุมพื้นที่ หรืออัปโหลดไฟล์ KML</span>
+                    </div>
+                </section>
+                <div class="flex flex-col gap-2 mt-2">
+                    <div class="flex gap-2">
+                        <button onclick="clearUAVMap()" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-3 rounded-xl flex items-center justify-center transition-all shadow-md" title="ล้างจุดทั้งหมด">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                        <button onclick="calculateUAVArea()" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md">
+                            <span class="material-symbols-outlined text-[18px]">architecture</span> Generate Flight Area
+                        </button>
+                    </div>
+                    <button id="downloadBtnUav" onclick="downloadUavPackage()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm shadow-md">
+                        <span class="material-symbols-outlined text-[18px]">download</span> Download KML / Excel ZIP
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -198,115 +199,345 @@
 
 <!-- Leaflet JS Script -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <!-- Tom Select JS -->
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
 <script>
+    let currentMode = 'none'; 
+    
     let rawGeoJSONData = null;
     let tomSelectControl = null;
-    let geojsonIndexLayer = null; // ชั้นข้อมูล Grid ระวาง
-    let innerLayer = null;        // เส้นขอบ Merged Block สีเหลือง
-    let bufferLayer = null;       // เส้นขอบ NOTAM Buffer สีแดง
+    let geojsonIndexLayer = null; 
+    let innerLayer = null;        
+    let bufferLayer = null;       
+    let sheetLayers = {}; 
+    let gridLabelsLayer = L.layerGroup(); 
+    const ZOOM_THRESHOLD = 9; 
+
+    let uavPoints = [];
+    let uavMarkersLayer = L.layerGroup();
+    let uavPolygonLayer = L.polygon([], { color: '#f97316', fillColor: '#f97316', fillOpacity: 0.1, weight: 2, dashArray: '5, 5' });
+    let uavInnerLayer = null;
+    let uavBufferLayer = null;
     let map = null;
 
     document.addEventListener("DOMContentLoaded", function () {
-        // 1. สร้าง แผนที่ Leaflet
-        map = L.map('map').setView([13.7563, 100.5018], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        const btnGenerator = document.getElementById('btn-generator');
+        const submenuGenerator = document.getElementById('submenu-generator');
+        const iconGenerator = document.getElementById('icon-generator');
+        const btnAirplane = document.getElementById('btn-airplane');
+        const btnUav = document.getElementById('btn-uav');
+        const panelAirplane = document.getElementById('panel-airplane');
+        const panelUav = document.getElementById('panel-uav');
+        const closeBtns = document.querySelectorAll('.btn-close-panel');
 
-        // 2. ผูก Event ปุ่มกด Toggle Panel
-        const genBtn = document.getElementById('toggleGeneratorBtn');
-        if (genBtn) {
-            genBtn.addEventListener('click', toggleGeneratorPanel);
-        }
+        btnGenerator.addEventListener('click', function() {
+            submenuGenerator.classList.toggle('hidden');
+            submenuGenerator.classList.toggle('flex');
+            iconGenerator.style.transform = submenuGenerator.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
 
-        // 3. สร้าง TomSelect
+        btnAirplane.addEventListener('click', function() {
+            currentMode = 'airplane';
+            panelUav.classList.add('hidden');
+            panelAirplane.classList.remove('hidden');
+            clearUAVMap(); 
+
+            if (geojsonIndexLayer && !map.hasLayer(geojsonIndexLayer)) {
+                map.addLayer(geojsonIndexLayer);
+            }
+            if (map.getZoom() >= ZOOM_THRESHOLD && !map.hasLayer(gridLabelsLayer)) {
+                map.addLayer(gridLabelsLayer);
+            }
+        });
+
+        btnUav.addEventListener('click', function() {
+            currentMode = 'uav';
+            panelAirplane.classList.add('hidden');
+            panelUav.classList.remove('hidden');
+
+            if (geojsonIndexLayer && map.hasLayer(geojsonIndexLayer)) {
+                map.removeLayer(geojsonIndexLayer);
+            }
+            if (map.hasLayer(gridLabelsLayer)) {
+                map.removeLayer(gridLabelsLayer);
+            }
+
+            if(innerLayer) map.removeLayer(innerLayer);
+            if(bufferLayer) map.removeLayer(bufferLayer);
+            if(tomSelectControl) tomSelectControl.clear();
+        });
+
+        closeBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                panelAirplane.classList.add('hidden');
+                panelUav.classList.add('hidden');
+                currentMode = 'none';
+
+                if (geojsonIndexLayer && !map.hasLayer(geojsonIndexLayer)) {
+                    map.addLayer(geojsonIndexLayer);
+                }
+            });
+        });
+
+        map = L.map('map', { renderer: L.canvas() }).setView([13.7563, 100.5018], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+        
+        uavMarkersLayer.addTo(map);
+        uavPolygonLayer.addTo(map);
+
+        map.on('click', function(e) {
+            if (currentMode === 'uav') {
+                addUavPoint(e.latlng);
+            }
+        });
+
+        map.on('zoomend', function() {
+            if (currentMode === 'airplane' && map.getZoom() >= ZOOM_THRESHOLD) {
+                if (!map.hasLayer(gridLabelsLayer)) map.addLayer(gridLabelsLayer);
+            } else {
+                if (map.hasLayer(gridLabelsLayer)) map.removeLayer(gridLabelsLayer);
+            }
+        });
+
         const selectEl = document.getElementById('sheetSelect');
         if (selectEl) {
             tomSelectControl = new TomSelect('#sheetSelect', {
-                plugins: ['remove_button', 'clear_button'],
-                create: false,
-                maxItems: null,
-                placeholder: 'พิมพ์ค้นหา หรือเลือกระวาง...'
+                plugins: ['remove_button', 'clear_button'], create: false, maxItems: null, placeholder: 'พิมพ์ค้นหา หรือเลือกระวาง...'
+            });
+            tomSelectControl.on('item_remove', function(value) {
+                if (sheetLayers[value]) sheetLayers[value].setStyle({ color: '#2563eb', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.05 });
+            });
+            tomSelectControl.on('item_add', function(value) {
+                if (sheetLayers[value]) sheetLayers[value].setStyle({ color: '#0ea5e9', weight: 3, fillColor: '#0ea5e9', fillOpacity: 0.4 });
             });
         }
 
-        // 4. โหลด GeoJSON (แสดง Index บนแผนที่ + ยัดเข้า Dropdown)
         fetch('/index_l7018.json')
-            .then(res => {
-                if (!res.ok) throw new Error("HTTP error " + res.status);
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 rawGeoJSONData = data;
-
                 if (data && data.features) {
-                    // 📌 แก้ไขข้อ 1: แสดงตัว Index ระวางบนแผนที่ Leaflet
                     geojsonIndexLayer = L.geoJSON(data, {
-                        style: {
-                            color: '#2563eb',
-                            weight: 1,
-                            fillColor: '#3b82f6',
-                            fillOpacity: 0.05
-                        },
+                        style: { color: '#2563eb', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.05 },
                         onEachFeature: function(feature, layer) {
-                            const props = feature.properties || {};
-                            const sheetNo = props.Sheet_dash || props.sheet_dash || props.SHEET_DASH;
+                            const sheetNo = feature.properties.Sheet_dash || feature.properties.sheet_dash || feature.properties.SHEET_DASH;
                             if (sheetNo) {
+                                sheetLayers[sheetNo] = layer;
+                                const center = layer.getBounds().getCenter();
+                                gridLabelsLayer.addLayer(L.marker(center, { icon: L.divIcon({ className: 'grid-label', html: `${sheetNo}`, iconSize: [60, 20], iconAnchor: [30, 10] }), interactive: false }));
                                 layer.bindPopup(`<b>ระวาง L7018:</b> ${sheetNo}`);
+
+                                layer.on('click', function(e) {
+                                    if (currentMode !== 'airplane') return; 
+                                    if (tomSelectControl) {
+                                        const vals = tomSelectControl.getValue();
+                                        const vArr = Array.isArray(vals) ? vals : (vals ? [vals] : []);
+                                        if (!vArr.includes(sheetNo)) tomSelectControl.addItem(sheetNo);
+                                    }
+                                });
+
+                                layer.on('mouseover', function() {
+                                    if (currentMode !== 'airplane') return;
+                                    const vals = tomSelectControl ? tomSelectControl.getValue() : [];
+                                    if (Array.isArray(vals) ? vals.includes(sheetNo) : vals === sheetNo) {
+                                        layer.setStyle({ fillOpacity: 0.6 });
+                                    } else {
+                                        layer.setStyle({ fillOpacity: 0.3, weight: 2 });
+                                    }
+                                });
+
+                                layer.on('mouseout', function() {
+                                    if (currentMode !== 'airplane') return;
+                                    const vals = tomSelectControl ? tomSelectControl.getValue() : [];
+                                    if (Array.isArray(vals) ? vals.includes(sheetNo) : vals === sheetNo) {
+                                        layer.setStyle({ color: '#0ea5e9', weight: 3, fillColor: '#0ea5e9', fillOpacity: 0.4 });
+                                    } else {
+                                        layer.setStyle({ color: '#2563eb', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.05 });
+                                    }
+                                });
                             }
                         }
                     }).addTo(map);
 
-                    // ยัดรายการระวางเข้า Dropdown
                     const sheetOptions = [];
                     data.features.forEach(f => {
-                        const props = f.properties || {};
-                        const sheetNo = props.Sheet_dash || props.sheet_dash || props.SHEET_DASH;
-                        if (sheetNo && !sheetOptions.includes(sheetNo)) {
-                            sheetOptions.push(sheetNo);
-                        }
+                        const s = f.properties.Sheet_dash || f.properties.sheet_dash || f.properties.SHEET_DASH;
+                        if (s && !sheetOptions.includes(s)) sheetOptions.push(s);
                     });
                     sheetOptions.sort();
-                    if (tomSelectControl) {
-                        sheetOptions.forEach(s => {
-                            tomSelectControl.addOption({ value: s, text: s });
-                        });
-                    }
+                    if (tomSelectControl) sheetOptions.forEach(s => tomSelectControl.addOption({ value: s, text: s }));
                 }
-            })
-            .catch(err => console.error("Error loading GeoJSON:", err));
+            }).catch(e => console.error(e));
     });
 
-    function toggleGeneratorPanel() {
-        const panel = document.getElementById('generatorPanel');
-        if (panel) panel.classList.toggle('hidden');
+    // ==========================================
+    // 🚁 UAV LOGIC
+    // ==========================================
+    function addUavPoint(latlng) {
+        uavPoints.push(latlng);
+        redrawUavShape();
     }
 
+    function redrawUavShape() {
+        uavMarkersLayer.clearLayers();
+        uavPoints.forEach((latlng, index) => {
+            let marker = L.circleMarker(latlng, { color: '#fff', weight: 1, radius: 6, fillColor: '#ef4444', fillOpacity: 1 });
+            marker.on('click', function(e) {
+                L.DomEvent.stopPropagation(e); 
+                uavPoints.splice(index, 1);
+                redrawUavShape();
+            });
+            uavMarkersLayer.addLayer(marker);
+        });
+        uavPolygonLayer.setLatLngs(uavPoints);
+    }
+
+    function clearUAVMap() {
+        uavPoints = [];
+        uavMarkersLayer.clearLayers();
+        uavPolygonLayer.setLatLngs([]);
+        if(uavInnerLayer) map.removeLayer(uavInnerLayer);
+        if(uavBufferLayer) map.removeLayer(uavBufferLayer);
+        document.getElementById('downloadBtnUav').classList.add('hidden');
+    }
+
+    document.getElementById('uavFileInput').addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/upload_kml', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Upload failed");
+
+            uavPoints = data.coordinates.map(c => L.latLng(c[1], c[0]));
+            
+            if (uavPoints.length > 1 && 
+                uavPoints[0].lat === uavPoints[uavPoints.length-1].lat && 
+                uavPoints[0].lng === uavPoints[uavPoints.length-1].lng) {
+                uavPoints.pop();
+            }
+
+            redrawUavShape();
+            if (uavPoints.length > 0) {
+                map.fitBounds(uavPolygonLayer.getBounds(), { padding: [30, 30] });
+            }
+            alert("นำเข้าพิกัด KML สำเร็จ พร้อมคำนวณ Buffer ได้เลยครับ!");
+        } catch (err) {
+            alert("เกิดข้อผิดพลาดในการอัปโหลด: " + err.message);
+        }
+    });
+
+    async function calculateUAVArea() {
+        if (uavPoints.length < 3) {
+            alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML เพื่อสร้างพื้นที่ทำงานครับสุดหล่อ!");
+            return;
+        }
+
+        const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
+        const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
+        const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
+        
+        const payloadCoords = [...polygonCoords];
+        if (payloadCoords.length > 0) {
+            payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
+        }
+
+        const payload = {
+            project_name: projectName,
+            coordinates: payloadCoords,
+            buffer_meters: bufferMeters
+        };
+
+        try {
+            const res = await fetch('/api/calculate_uav', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
+
+            const data = await res.json();
+
+            if(uavInnerLayer) map.removeLayer(uavInnerLayer);
+            if(uavBufferLayer) map.removeLayer(uavBufferLayer);
+
+            uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
+                color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
+            }).addTo(map);
+
+            uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
+                color: '#f97316', fillColor: '#f97316', fillOpacity: 0.2, weight: 3
+            }).addTo(map);
+
+            map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
+
+            document.getElementById('downloadBtnUav').classList.remove('hidden');
+            window.lastUavPayload = payload;
+
+        } catch (err) {
+            alert("เกิดข้อผิดพลาด: " + err.message);
+        }
+    }
+
+    async function downloadUavPackage() {
+        if (!window.lastUavPayload) {
+            alert("กรุณากดคำนวณพื้นที่ UAV ก่อนดาวน์โหลดครับ!");
+            return;
+        }
+
+        window.lastUavPayload.project_name = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
+
+        try {
+            const res = await fetch('/api/download_uav', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(window.lastUavPayload)
+            });
+
+            if (!res.ok) throw new Error("ดาวน์โหลดแพ็กเกจ UAV ไม่สำเร็จ");
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${window.lastUavPayload.project_name}_UAV_Package.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert("ดาวน์โหลดไม่สำเร็จ: " + err.message);
+        }
+    }
+
+    // ==========================================
+    // ✈️ AIRPLANE LOGIC
+    // ==========================================
     function getSelectedSheets() {
         if (!tomSelectControl) return [];
         const val = tomSelectControl.getValue();
-        if (!val) return [];
-        return Array.isArray(val) ? val : [val];
+        return Array.isArray(val) ? val : (val ? [val] : []);
     }
 
-    // 📌 ดึงชื่อโครงการปัจจุบันจาก Input
     function getProjectName() {
-        const inputEl = document.getElementById('projectName');
+        const inputEl = document.getElementById('projectNameAir');
         if (inputEl && inputEl.value.trim() !== "") {
             return inputEl.value.trim().replace(/\s+/g, '_');
         }
         return 'NOTAM_PROJECT';
     }
 
-    // คำนวณ Bounding Box จากระวางที่เลือก
     function getMergedBoundsOfSelectedSheets(selectedSheets) {
         if (!rawGeoJSONData || !rawGeoJSONData.features) return null;
-
         let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
         let found = false;
 
@@ -331,7 +562,6 @@
         return { minLat, maxLat, minLng, maxLng };
     }
 
-    // 🚀 คำนวณพิกัด
     async function calculateFlightArea() {
         const selectedSheets = getSelectedSheets();
         if (!selectedSheets || selectedSheets.length === 0) {
@@ -347,7 +577,6 @@
 
         const ns_nm = parseFloat(document.getElementById('nsNm').value || 5.0);
         const we_nm = parseFloat(document.getElementById('weNm').value || 3.0);
-
         const ns_deg = ns_nm / 60.0;
         const we_deg = we_nm / 60.0;
 
@@ -361,11 +590,8 @@
         const buffer_se = [bbox.minLat - ns_deg, bbox.maxLng + we_deg];
         const buffer_sw = [bbox.minLat - ns_deg, bbox.minLng - we_deg];
 
-        // 📌 แก้ไขข้อ 2: อ่านชื่อโครงการล่าสุดส่งไปเสมอ
-        const currentProjectName = getProjectName();
-
         const payload = {
-            project_name: currentProjectName,
+            project_name: getProjectName(),
             sheets: selectedSheets,
             inner_nw, inner_ne, inner_se, inner_sw,
             buffer_nw, buffer_ne, buffer_se, buffer_sw
@@ -380,23 +606,20 @@
 
             if (!res.ok) throw new Error("ส่งข้อมูลคำนวณไม่สำเร็จ");
 
-            // ลบเส้นเดิม
             if (innerLayer) map.removeLayer(innerLayer);
             if (bufferLayer) map.removeLayer(bufferLayer);
 
-            // 1. วาด Buffer สีแดง
             bufferLayer = L.polygon([buffer_nw, buffer_ne, buffer_se, buffer_sw], {
                 color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
             }).addTo(map);
 
-            // 2. วาด Inner สีเหลือง
             innerLayer = L.polygon([inner_nw, inner_ne, inner_se, inner_sw], {
                 color: '#eab308', fillColor: '#eab308', fillOpacity: 0.2, weight: 3
             }).addTo(map);
 
             map.fitBounds(bufferLayer.getBounds(), { padding: [30, 30] });
 
-            const downloadBtn = document.getElementById('downloadBtn');
+            const downloadBtn = document.getElementById('downloadBtnAir');
             if (downloadBtn) downloadBtn.classList.remove('hidden');
 
             window.lastPayload = payload;
@@ -406,14 +629,12 @@
         }
     }
 
-    // 📦 ดาวน์โหลด ZIP
     async function downloadZipPackage() {
         if (!window.lastPayload) {
             alert("กรุณากดคำนวณก่อนดาวน์โหลดครับสุดหล่อ!");
             return;
         }
 
-        // 📌 แก้ไขข้อ 2: อัปเดตชื่อโครงการล่าสุดก่อนส่งไปสร้าง ZIP เสมอ
         window.lastPayload.project_name = getProjectName();
 
         try {
@@ -425,20 +646,11 @@
 
             if (!res.ok) throw new Error("เกิดข้อผิดพลาดในการดาวน์โหลด");
 
-            // ดึงชื่อไฟล์จริงจาก Response Header (Content-Disposition) ถ้ามี หรือตั้งจาก JS
-            const contentDisposition = res.headers.get('Content-Disposition');
-            let filename = `${window.lastPayload.project_name}_Package.zip`;
-            
-            if (contentDisposition && contentDisposition.includes('filename=')) {
-                const match = contentDisposition.match(/filename="?([^";]+)"?/);
-                if (match && match[1]) filename = match[1];
-            }
-
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename;
+            a.download = `${window.lastPayload.project_name}_Package.zip`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -448,6 +660,5 @@
         }
     }
 </script>
-
 </body>
 </html>
