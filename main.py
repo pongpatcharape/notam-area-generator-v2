@@ -7,11 +7,64 @@ import pyproj
 import simplekml
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point, shape
 from shapely.ops import transform
 from flask import Flask, request, jsonify, send_file, send_from_directory
 
 app = Flask(__name__)
+
+# ==========================================
+# 🗺️ ระบบค้นหาสถานที่ (Local Reverse Geocoding) ทำงานหลังบ้าน
+# ==========================================
+tambon_features = []
+geojson_path = 'tambon_thailand.json'
+
+# โหลดข้อมูลเข้าหน่วยความจำแค่ครั้งเดียวตอนเปิดเซิร์ฟเวอร์
+if os.path.exists(geojson_path):
+    print("กำลังโหลดข้อมูลขอบเขตตำบลเพื่อใช้ค้นหาสถานที่ (ทำงานเบื้องหลัง)...")
+    try:
+        with open(geojson_path, 'r', encoding='utf-8') as f:
+            gj_data = json.load(f)
+            for feat in gj_data.get('features', []):
+                if feat.get('geometry'):
+                    geom = shape(feat['geometry'])
+                    tambon_features.append({
+                        'geom': geom,
+                        'bounds': geom.bounds,
+                        'props': feat.get('properties', {})
+                    })
+        print(f"โหลดข้อมูลตำบลสำเร็จ {len(tambon_features)} รายการ พร้อมใช้งาน!")
+    except Exception as e:
+        print(f"⚠️ ไม่สามารถโหลดไฟล์ {geojson_path} ได้: {e}")
+else:
+    print(f"⚠️ ไม่พบไฟล์ {geojson_path} ระบบจะไม่สามารถดึงชื่อสถานที่อัตโนมัติได้")
+
+def get_local_location(lon, lat):
+    """ฟังก์ชันเช็ค Point in Polygon แบบเร็ว"""
+    if not tambon_features:
+        return ""
+    
+    pt = Point(lon, lat)
+    for item in tambon_features:
+        minx, miny, maxx, maxy = item['bounds']
+        # 1. เช็ค Bounding Box ก่อน (ไวมาก)
+        if minx <= lon <= maxx and miny <= lat <= maxy:
+            # 2. เช็ค Polygon ละเอียด (ถ้าผ่านเงื่อนไขแรก)
+            if item['geom'].contains(pt):
+                props = item['props']
+                # ดึงฟิลด์ตามตาราง Attribute ของผู้การ
+                tam = props.get('TAM_NAM_T', '')
+                amp = props.get('AMPHOE_T', '')
+                prov = props.get('PROV_NAM_T', '')
+                
+                parts = []
+                if tam: parts.append(tam)
+                if amp: parts.append(amp)
+                if prov: parts.append(prov)
+                
+                return " ".join(parts).strip()
+    return ""
+
 
 def dd_to_dms(dd, is_lat=True):
     direction = ("N" if dd >= 0 else "S") if is_lat else ("E" if dd >= 0 else "W")
@@ -152,8 +205,10 @@ def calculate_uav():
     poly = Polygon(coords)
     
     centroid_lon = poly.centroid.x
+    centroid_lat = poly.centroid.y
+    
     utm_zone = int((centroid_lon + 180) / 6) + 1
-    epsg_code = f"326{utm_zone}" if poly.centroid.y >= 0 else f"327{utm_zone}"
+    epsg_code = f"326{utm_zone}" if centroid_lat >= 0 else f"327{utm_zone}"
     
     project_to_utm = pyproj.Transformer.from_crs('EPSG:4326', f'EPSG:{epsg_code}', always_xy=True).transform
     project_to_wgs84 = pyproj.Transformer.from_crs(f'EPSG:{epsg_code}', 'EPSG:4326', always_xy=True).transform
@@ -163,10 +218,14 @@ def calculate_uav():
     
     poly_wgs84 = transform(project_to_wgs84, poly_utm)
     buffer_wgs84 = transform(project_to_wgs84, buffer_utm)
+
+    # วิ่งไปค้นหาชื่อสถานที่จากฟังก์ชัน Local ที่เราเขียนไว้ด้านบน
+    location_name = get_local_location(centroid_lon, centroid_lat)
     
     return jsonify({
         "inner_coords": list(poly_wgs84.exterior.coords),
-        "buffer_coords": list(buffer_wgs84.exterior.coords)
+        "buffer_coords": list(buffer_wgs84.exterior.coords),
+        "location_name": location_name # ส่งกลับไปให้หน้าเว็บพิมพ์ลงใน Textbox 
     })
 
 @app.route('/api/upload_kml', methods=['POST'])
@@ -217,6 +276,7 @@ def upload_kml():
 def download_uav():
     data = request.get_json() or {}
     project_name = data.get('project_name', 'UAV_PROJECT').strip().replace(' ', '_')
+    location_name = data.get('location_name', '-') # รับค่า location มาลง Excel
     coords = data.get('coordinates', [])
     buffer_meters = float(data.get('buffer_meters', 50))
     
@@ -225,6 +285,8 @@ def download_uav():
         
     poly = Polygon(coords)
     centroid_lon = poly.centroid.x
+    centroid_lat = poly.centroid.y
+    
     utm_zone = int((centroid_lon + 180) / 6) + 1
     epsg_code = f"326{utm_zone}" if poly.centroid.y >= 0 else f"327{utm_zone}"
     
@@ -257,10 +319,27 @@ def download_uav():
         pnt = kml_buffer.newpoint(name=f"Buf_Pt_{idx}", coords=[(lon, lat)])
         pnt.description = f"Lat: {lat:.6f}, Lon: {lon:.6f}\nDMS: {dd_to_dms(lat, True)}, {dd_to_dms(lon, False)}"
 
+    # ---------------------------------------------
+    # 📊 EXCEL GENERATION (อัปเกรดใหม่)
+    # ---------------------------------------------
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Buffer_Vertices"
-    ws.views.sheetView[0].showGridLines = True
+    ws.title = "Mission_Data"
+    ws.views.sheetView[0].showGridLines = False 
+    
+    # ส่วนหัวข้อมูล (Summary Section)
+    ws.append(["📌 Project Name:", project_name])
+    ws.append(["📍 Location:", location_name])
+    ws.append(["🎯 Centroid Latitude:", dd_to_dms(centroid_lat, True), round(centroid_lat, 6)])
+    ws.append(["🎯 Centroid Longitude:", dd_to_dms(centroid_lon, False), round(centroid_lon, 6)])
+    ws.append(["📏 Buffer Distance:", f"{buffer_meters} Meters"])
+    ws.append([]) 
+
+    bold_font = Font(bold=True)
+    for r in range(1, 6):
+        ws.cell(row=r, column=1).font = bold_font
+
+    table_start_row = 7
     ws.append(["Buffer Vertex", "Latitude (DMS)", "Longitude (DMS)", "Latitude (DD)", "Longitude (DD)"])
 
     for idx, pt in enumerate(buffer_coords[:-1], start=1):
@@ -272,16 +351,16 @@ def download_uav():
     thin_border = Border(left=Side(style='thin', color='D9D9D9'), right=Side(style='thin', color='D9D9D9'), top=Side(style='thin', color='D9D9D9'), bottom=Side(style='thin', color='D9D9D9'))
 
     for col in range(1, 6):
-        c = ws.cell(row=1, column=col)
+        c = ws.cell(row=table_start_row, column=col)
         c.fill = header_fill; c.font = header_font; c.alignment = Alignment(horizontal="center")
 
-    for r in range(2, len(buffer_coords)):
+    for r in range(table_start_row + 1, table_start_row + len(buffer_coords)):
         for c in range(1, 6):
             cell = ws.cell(row=r, column=c)
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="center")
 
-    for col, width in {'A': 16, 'B': 22, 'C': 22, 'D': 18, 'E': 18}.items():
+    for col, width in {'A': 20, 'B': 22, 'C': 22, 'D': 18, 'E': 18}.items():
         ws.column_dimensions[col].width = width
 
     excel_bytes = io.BytesIO()
