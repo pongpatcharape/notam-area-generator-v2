@@ -94,11 +94,6 @@
                     <span class="material-symbols-outlined text-[18px]">drone</span><span>UAV</span>
                 </button>
             </div>
-
-            <button id="btn-document" class="flex items-center gap-3 bg-[#111827] text-white hover:bg-[#374151] rounded-lg px-4 py-3 w-full text-left font-semibold border border-outline-variant transition-colors mt-2">
-                <span class="material-symbols-outlined">description</span>
-                <span>Document</span>
-            </button>
         </nav>
     </aside>
 
@@ -118,7 +113,7 @@
                 <section class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Project Name</label>
-                        <input id="projectNameAir" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" value="Alpha-Tango Aerial">
+                        <input id="projectNameAir" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" value="NOTAM A_00">
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface font-medium">L7018 SHEET:</label>
@@ -161,7 +156,13 @@
                 <section class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Project Name</label>
-                        <input id="projectNameUav" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" value="Drone-Mapping-01">
+                        <input id="projectNameUav" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" value="UAV mapping 01">
+                    </div>
+                    
+                    <!-- NEW FIELD: Location -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface">Location</label>
+                        <input id="uavLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" placeholder="สถานที่ปฏิบัติงาน">
                     </div>
                     
                     <div class="flex flex-col gap-1 mt-2">
@@ -424,6 +425,10 @@
                 uavPoints[0].lng === uavPoints[uavPoints.length-1].lng) {
                 uavPoints.pop();
             }
+            
+            if (data.location_name && data.location_name !== "") {
+               document.getElementById('uavLocation').value = data.location_name;
+            }
 
             redrawUavShape();
             if (uavPoints.length > 0) {
@@ -435,58 +440,66 @@
         }
     });
 
-    async function calculateUAVArea() {
-        if (uavPoints.length < 3) {
-            alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML เพื่อสร้างพื้นที่ทำงานครับสุดหล่อ!");
-            return;
-        }
-
-        const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
-        const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
-        const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
-        
-        const payloadCoords = [...polygonCoords];
-        if (payloadCoords.length > 0) {
-            payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
-        }
-
-        const payload = {
-            project_name: projectName,
-            coordinates: payloadCoords,
-            buffer_meters: bufferMeters
-        };
-
-        try {
-            const res = await fetch('/api/calculate_uav', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
-
-            const data = await res.json();
-
-            if(uavInnerLayer) map.removeLayer(uavInnerLayer);
-            if(uavBufferLayer) map.removeLayer(uavBufferLayer);
-
-            uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
-                color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
-            }).addTo(map);
-
-            uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
-                color: '#f97316', fillColor: '#f97316', fillOpacity: 0.2, weight: 3
-            }).addTo(map);
-
-            map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
-
-            document.getElementById('downloadBtnUav').classList.remove('hidden');
-            window.lastUavPayload = payload;
-
-        } catch (err) {
-            alert("เกิดข้อผิดพลาด: " + err.message);
-        }
+async function calculateUAVArea() {
+    if (uavPoints.length < 3) {
+        alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML เพื่อสร้างพื้นที่ทำงานครับสุดหล่อ!");
+        return;
     }
+
+    const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
+    const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
+    const locationName = document.getElementById('uavLocation').value.trim() || '-';
+    
+    const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
+    
+    const payloadCoords = [...polygonCoords];
+    if (payloadCoords.length > 0) {
+        payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
+    }
+
+    const payload = {
+        project_name: projectName,
+        location_name: locationName,
+        coordinates: payloadCoords,
+        buffer_meters: bufferMeters
+    };
+
+    try {
+        const res = await fetch('/api/calculate_uav', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
+
+        const data = await res.json();
+
+        // 📌 เพิ่มตรงนี้ครับ เพื่อดึงชื่อ ตำบล อำเภอ จังหวัด มาแสดงที่หน้าเว็บ
+        if (data.location_name) {
+            document.getElementById('uavLocation').value = data.location_name;
+        }
+
+        if(uavInnerLayer) map.removeLayer(uavInnerLayer);
+        if(uavBufferLayer) map.removeLayer(uavBufferLayer);
+
+        uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
+            color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
+        }).addTo(map);
+
+        uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
+            color: '#f97316', fillColor: '#f97316', fillOpacity: 0.2, weight: 3
+        }).addTo(map);
+
+        map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
+
+        document.getElementById('downloadBtnUav').classList.remove('hidden');
+        window.lastUavPayload = payload;
+
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    }
+}
 
     async function downloadUavPackage() {
         if (!window.lastUavPayload) {
@@ -495,6 +508,7 @@
         }
 
         window.lastUavPayload.project_name = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
+        window.lastUavPayload.location_name = document.getElementById('uavLocation').value.trim() || '-';
 
         try {
             const res = await fetch('/api/download_uav', {
