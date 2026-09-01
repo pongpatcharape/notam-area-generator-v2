@@ -15,6 +15,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <!-- Tom Select CSS -->
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<!-- Flatpickr CSS (Dark Theme) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
@@ -48,6 +51,11 @@
     .ts-dropdown { background-color: #1E222A !important; border: 1px solid #414754 !important; color: #e0e2ed !important; border-radius: 0.5rem; z-index: 9999 !important; }
     .ts-dropdown .option:hover, .ts-dropdown .active { background-color: #374151 !important; color: #ffffff !important; }
     .ts-control input { color: #ffffff !important; }
+    
+    /* ปรับแต่งปฏิทิน Flatpickr ให้เข้ากับธีม */
+    .flatpickr-calendar { background: #1E222A !important; border: 1px solid #414754 !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
+    .flatpickr-time input { color: #ffffff !important; }
+
     .grid-label {
         color: #1e3a8a; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-align: center;
         text-shadow: 1px 1px 2px #ffffff, -1px -1px 2px #ffffff, 1px -1px 2px #ffffff, -1px 1px 2px #ffffff; pointer-events: none;
@@ -82,6 +90,7 @@
         </div>
         
         <nav class="flex-1 flex flex-col gap-2">
+            <!-- Generator Menu -->
             <button id="btn-generator" class="flex items-center justify-between bg-primary-container text-on-primary-container rounded-lg px-4 py-3 w-full text-left font-semibold hover:opacity-90 transition-opacity">
                 <div class="flex items-center gap-3"><span class="material-symbols-outlined">radar</span><span>Generator</span></div>
                 <span id="icon-generator" class="material-symbols-outlined transition-transform">expand_more</span>
@@ -94,6 +103,11 @@
                     <span class="material-symbols-outlined text-[18px]">drone</span><span>UAV</span>
                 </button>
             </div>
+
+            <!-- Document Menu Button (Tied to UAV) -->
+            <button id="btn-document" class="flex items-center justify-between bg-[#111827] text-white border border-outline-variant rounded-lg px-4 py-3 w-full text-left font-semibold hover:bg-orange-600 hover:border-orange-500 transition-colors mt-1">
+                <div class="flex items-center gap-3"><span class="material-symbols-outlined text-orange-400">description</span><span>Document</span></div>
+            </button>
         </nav>
     </aside>
 
@@ -159,7 +173,6 @@
                         <input id="projectNameUav" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" value="UAV mapping 01">
                     </div>
                     
-                    <!-- NEW FIELD: Location -->
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Location</label>
                         <input id="uavLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" placeholder="สถานที่ปฏิบัติงาน">
@@ -175,7 +188,7 @@
                     <h3 class="text-xs font-bold text-on-surface-variant uppercase border-b border-outline-variant pb-2">AREA BUFFER</h3>
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Buffer Distance (Meters)</label>
-                        <input id="uavBufferMeters" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" step="10" type="number" value="50">
+                        <input id="uavBufferMeters" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" step="50" type="number" value="200">
                         <span class="text-[10px] text-orange-300 mt-1">🚁 คลิกบนแผนที่เพื่อสร้างมุมพื้นที่ หรืออัปโหลดไฟล์ KML</span>
                     </div>
                 </section>
@@ -195,6 +208,66 @@
             </div>
         </div>
 
+        <!-- 📄 PANEL: DOCUMENT FOR UAV (FLATPICKR FORCED 24H & DEFAULTS) -->
+        <div id="panel-document" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500">
+                <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+                    <h3 class="text-xs font-bold text-orange-400 uppercase flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">description</span> UAV DOCUMENT INFO
+                    </h3>
+                    <button class="btn-close-panel text-on-surface-variant hover:text-white transition-colors"><span class="material-symbols-outlined text-[18px]">close</span></button>
+                </div>
+                
+                <section class="flex flex-col gap-3">
+                    <!-- วันและเวลาเริ่มต้น (ตั้งค่าเริ่มต้น 08:00) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-on-surface font-medium">วันเริ่มต้น</label>
+                            <input type="text" id="docStartDate" placeholder="YYYY-MM-DD" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-on-surface font-medium">เวลา (HH:MM)</label>
+                            <input type="text" id="docStartTime" value="08:00" placeholder="08:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full">
+                        </div>
+                    </div>
+
+                    <!-- วันและเวลาสิ้นสุด (ตั้งค่าเริ่มต้น 17:00) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-on-surface font-medium">วันสิ้นสุด</label>
+                            <input type="text" id="docEndDate" placeholder="YYYY-MM-DD" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-on-surface font-medium">เวลา (HH:MM)</label>
+                            <input type="text" id="docEndTime" value="17:00" placeholder="17:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full">
+                        </div>
+                    </div>
+
+                    <!-- ผู้ประสาน -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface font-medium">ผู้ประสานงาน</label>
+                        <select id="docCoordinator" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full">
+                            <option value="">-- โหลดข้อมูล --</option>
+                        </select>
+                    </div>
+
+                    <!-- ผู้ติดต่อเร่งด่วน -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface font-medium">ผู้ติดต่อเร่งด่วน</label>
+                        <select id="docEmergency" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full">
+                            <option value="">-- โหลดข้อมูล --</option>
+                        </select>
+                    </div>
+                </section>
+
+                <div class="flex flex-col gap-2 mt-2">
+                    <button id="submitDocBtn" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-sm">
+                        <span class="material-symbols-outlined text-[18px]">open_in_new</span> ยืนยันข้อมูลเอกสาร
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -202,6 +275,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- Tom Select JS -->
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
     let currentMode = 'none'; 
@@ -223,14 +298,146 @@
     let map = null;
 
     document.addEventListener("DOMContentLoaded", function () {
+        
+        // 🚀 บังคับใช้ Flatpickr แทน Native Browser
+        flatpickr("#docStartDate", { dateFormat: "Y-m-d" });
+        flatpickr("#docEndDate", { dateFormat: "Y-m-d" });
+        
+        const timeConfig = {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true
+        };
+        flatpickr("#docStartTime", { ...timeConfig, defaultDate: "08:00" });
+        flatpickr("#docEndTime", { ...timeConfig, defaultDate: "17:00" });
+
         const btnGenerator = document.getElementById('btn-generator');
         const submenuGenerator = document.getElementById('submenu-generator');
         const iconGenerator = document.getElementById('icon-generator');
+        
         const btnAirplane = document.getElementById('btn-airplane');
         const btnUav = document.getElementById('btn-uav');
+        const btnDocument = document.getElementById('btn-document');
+        
         const panelAirplane = document.getElementById('panel-airplane');
         const panelUav = document.getElementById('panel-uav');
+        const panelDocument = document.getElementById('panel-document');
+        
         const closeBtns = document.querySelectorAll('.btn-close-panel');
+        const submitDocBtn = document.getElementById('submitDocBtn');
+
+        btnDocument.addEventListener('click', function() {
+            panelAirplane.classList.add('hidden');
+            panelUav.classList.add('hidden');
+            panelDocument.classList.remove('hidden');
+            
+            if (currentMode === 'airplane') {
+                if (geojsonIndexLayer && map.hasLayer(geojsonIndexLayer)) map.removeLayer(geojsonIndexLayer);
+                if (map.hasLayer(gridLabelsLayer)) map.removeLayer(gridLabelsLayer);
+                if (innerLayer) map.removeLayer(innerLayer);
+                if (bufferLayer) map.removeLayer(bufferLayer);
+                if (tomSelectControl) tomSelectControl.clear();
+            }
+            
+            currentMode = 'uav';
+            loadPersonnelData();
+        });
+
+        // Submit Document Parameters
+        submitDocBtn.addEventListener('click', function() {
+            const startDate = document.getElementById('docStartDate').value;
+            const startTime = document.getElementById('docStartTime').value;
+            const endDate = document.getElementById('docEndDate').value;
+            const endTime = document.getElementById('docEndTime').value;
+            const coordinator = document.getElementById('docCoordinator').value;
+            const emergency = document.getElementById('docEmergency').value;
+            const locationVal = document.getElementById('uavLocation').value;
+
+            if (!startDate || !startTime) {
+                alert("กรุณาระบุวัน-เวลาเริ่มต้นให้ครบถ้วนครับ!");
+                return;
+            }
+
+            let centerLat = 13.7563, centerLng = 100.5018;
+            if (uavPoints && uavPoints.length > 0) {
+                let sumLat = 0, sumLng = 0;
+                uavPoints.forEach(p => {
+                    sumLat += p.lat;
+                    sumLng += p.lng;
+                });
+                centerLat = sumLat / uavPoints.length;
+                centerLng = sumLng / uavPoints.length;
+            } else if (map) {
+                const center = map.getCenter();
+                centerLat = center.lat;
+                centerLng = center.lng;
+            }
+
+            function formatDMS(deg, isLat) {
+                const absDeg = Math.abs(deg);
+                const d = Math.floor(absDeg);
+                const mFloat = (absDeg - d) * 60;
+                const m = Math.floor(mFloat);
+                const s = (mFloat - m) * 60;
+                
+                const dStr = String(d).padStart(isLat ? 2 : 3, '0');
+                const mStr = String(m).padStart(2, '0');
+                const sStr = s.toFixed(2).padStart(5, '0');
+                
+                const hem = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+                return `${dStr}${mStr}${sStr}${hem}`;
+            }
+
+            const latDMS = formatDMS(centerLat, true);
+            const lngDMS = formatDMS(centerLng, false);
+
+            // สร้างพิกัดขอบเขต (Buffer points) จากข้อมูลที่รับมาจาก API ตอนคำนวณ
+            let bufferString = "";
+            if (window.lastUavResponse && window.lastUavResponse.buffer_coords && window.lastUavResponse.buffer_coords.length > 0) {
+                const formattedPoints = window.lastUavResponse.buffer_coords.map(c => {
+                    return formatDMS(c[1], true) + " " + formatDMS(c[0], false);
+                });
+                bufferString = formattedPoints.join(" -\u2003\u2003");
+            }
+
+            const detailsText1 = locationVal ? `พื้นที่ปฏิบัติภารกิจ ${locationVal}` : `พื้นที่ปฏิบัติภารกิจ`;
+            const detailsText2 = bufferString ? `พิกัด ${bufferString}` : `พิกัด`;
+
+            const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+            let sDay = "", sMonth = "", sYear = "";
+            if (startDate) {
+                const parts = startDate.split("-");
+                if (parts.length === 3) {
+                    sDay = parseInt(parts[2], 10).toString();
+                    sMonth = monthsThai[parseInt(parts[1], 10) - 1] || "";
+                    sYear = (parseInt(parts[0], 10) + 543).toString();
+                }
+            }
+
+            let eDay = "", eMonth = "", eYear = "";
+            if (endDate) {
+                const parts = endDate.split("-");
+                if (parts.length === 3) {
+                    eDay = parseInt(parts[2], 10).toString();
+                    eMonth = monthsThai[parseInt(parts[1], 10) - 1] || "";
+                    eYear = (parseInt(parts[0], 10) + 543).toString();
+                }
+            }
+
+            const subPageUrl = `notam_form.html?` +
+                `s_day=${encodeURIComponent(sDay)}&s_month=${encodeURIComponent(sMonth)}&s_year=${encodeURIComponent(sYear)}&s_time=${encodeURIComponent(startTime)}&` +
+                `e_day=${encodeURIComponent(eDay)}&e_month=${encodeURIComponent(eMonth)}&e_year=${encodeURIComponent(eYear)}&e_time=${encodeURIComponent(endTime)}&` +
+                `coordinator=${encodeURIComponent(coordinator)}&emergency=${encodeURIComponent(emergency)}&location=${encodeURIComponent(locationVal)}&` +
+                `lat=${encodeURIComponent(latDMS)}&lng=${encodeURIComponent(lngDMS)}&` +
+                `det1=${encodeURIComponent(detailsText1)}&det2=${encodeURIComponent(detailsText2)}`;
+
+            window.open(subPageUrl, '_blank');
+
+            panelDocument.classList.add('hidden');
+            panelUav.classList.remove('hidden');
+        });
 
         btnGenerator.addEventListener('click', function() {
             submenuGenerator.classList.toggle('hidden');
@@ -241,6 +448,7 @@
         btnAirplane.addEventListener('click', function() {
             currentMode = 'airplane';
             panelUav.classList.add('hidden');
+            panelDocument.classList.add('hidden');
             panelAirplane.classList.remove('hidden');
             clearUAVMap(); 
 
@@ -255,6 +463,7 @@
         btnUav.addEventListener('click', function() {
             currentMode = 'uav';
             panelAirplane.classList.add('hidden');
+            panelDocument.classList.add('hidden');
             panelUav.classList.remove('hidden');
 
             if (geojsonIndexLayer && map.hasLayer(geojsonIndexLayer)) {
@@ -273,6 +482,7 @@
             btn.addEventListener('click', function() {
                 panelAirplane.classList.add('hidden');
                 panelUav.classList.add('hidden');
+                panelDocument.classList.add('hidden');
                 currentMode = 'none';
 
                 if (geojsonIndexLayer && !map.hasLayer(geojsonIndexLayer)) {
@@ -372,6 +582,41 @@
             }).catch(e => console.error(e));
     });
 
+    async function loadPersonnelData() {
+        const coordSelect = document.getElementById('docCoordinator');
+        const emergSelect = document.getElementById('docEmergency');
+        
+        if (coordSelect.options.length > 1) return;
+
+        try {
+            const res = await fetch('/personnel.json');
+            if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
+            const personnelList = await res.json();
+
+            coordSelect.innerHTML = '<option value="">-- เลือกผู้ประสานงาน --</option>';
+            emergSelect.innerHTML = '<option value="">-- เลือกผู้ติดต่อเร่งด่วน --</option>';
+
+            personnelList.forEach(p => {
+                const displayName = p.name || p.fullname || `${p.rank || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim();
+                const phoneStr = p.phone ? ` (${p.phone})` : '';
+                
+                const opt1 = document.createElement('option');
+                opt1.value = displayName;
+                opt1.textContent = displayName + phoneStr;
+                coordSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = displayName;
+                opt2.textContent = displayName + phoneStr;
+                emergSelect.appendChild(opt2);
+            });
+        } catch (err) {
+            console.error(err);
+            coordSelect.innerHTML = '<option value="">-- โหลดข้อมูลไม่สำเร็จ --</option>';
+            emergSelect.innerHTML = '<option value="">-- โหลดข้อมูลไม่สำเร็จ --</option>';
+        }
+    }
+
     // ==========================================
     // 🚁 UAV LOGIC
     // ==========================================
@@ -440,66 +685,66 @@
         }
     });
 
-async function calculateUAVArea() {
-    if (uavPoints.length < 3) {
-        alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML เพื่อสร้างพื้นที่ทำงานครับสุดหล่อ!");
-        return;
-    }
-
-    const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
-    const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
-    const locationName = document.getElementById('uavLocation').value.trim() || '-';
-    
-    const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
-    
-    const payloadCoords = [...polygonCoords];
-    if (payloadCoords.length > 0) {
-        payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
-    }
-
-    const payload = {
-        project_name: projectName,
-        location_name: locationName,
-        coordinates: payloadCoords,
-        buffer_meters: bufferMeters
-    };
-
-    try {
-        const res = await fetch('/api/calculate_uav', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
-
-        const data = await res.json();
-
-        // 📌 เพิ่มตรงนี้ครับ เพื่อดึงชื่อ ตำบล อำเภอ จังหวัด มาแสดงที่หน้าเว็บ
-        if (data.location_name) {
-            document.getElementById('uavLocation').value = data.location_name;
+    async function calculateUAVArea() {
+        if (uavPoints.length < 3) {
+            alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML เพื่อสร้างพื้นที่ทำงานครับสุดหล่อ!");
+            return;
         }
 
-        if(uavInnerLayer) map.removeLayer(uavInnerLayer);
-        if(uavBufferLayer) map.removeLayer(uavBufferLayer);
+        const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
+        const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
+        const locationName = document.getElementById('uavLocation').value.trim() || '-';
+        
+        const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
+        
+        const payloadCoords = [...polygonCoords];
+        if (payloadCoords.length > 0) {
+            payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
+        }
 
-        uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
-            color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
-        }).addTo(map);
+        const payload = {
+            project_name: projectName,
+            location_name: locationName,
+            coordinates: payloadCoords,
+            buffer_meters: bufferMeters
+        };
 
-        uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
-            color: '#f97316', fillColor: '#f97316', fillOpacity: 0.2, weight: 3
-        }).addTo(map);
+        try {
+            const res = await fetch('/api/calculate_uav', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
+            if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
 
-        document.getElementById('downloadBtnUav').classList.remove('hidden');
-        window.lastUavPayload = payload;
+            const data = await res.json();
+            window.lastUavResponse = data; // บันทึก Response ไว้ดึงพิกัด Buffer สำหรับหน้าฟอร์ม
 
-    } catch (err) {
-        alert("เกิดข้อผิดพลาด: " + err.message);
+            if (data.location_name) {
+                document.getElementById('uavLocation').value = data.location_name;
+            }
+
+            if(uavInnerLayer) map.removeLayer(uavInnerLayer);
+            if(uavBufferLayer) map.removeLayer(uavBufferLayer);
+
+            uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
+                color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2
+            }).addTo(map);
+
+            uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
+                color: '#f97316', fillColor: '#f97316', fillOpacity: 0.2, weight: 3
+            }).addTo(map);
+
+            map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
+
+            document.getElementById('downloadBtnUav').classList.remove('hidden');
+            window.lastUavPayload = payload;
+
+        } catch (err) {
+            alert("เกิดข้อผิดพลาด: " + err.message);
+        }
     }
-}
 
     async function downloadUavPackage() {
         if (!window.lastUavPayload) {
@@ -675,4 +920,4 @@ async function calculateUAVArea() {
     }
 </script>
 </body>
-</html>
+</html
