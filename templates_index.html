@@ -44,7 +44,7 @@
 </script>
 <style>
     .glass-panel { background: rgba(30, 34, 42, 0.95); backdrop-filter: blur(8px); border: 1px solid #414754; }
-    #map { width: 100%; height: 100%; z-index: 0; }
+    #map { width: 100%; height: 100%; z-index: 0; transition: background-color 0.3s ease; }
     .ts-control { background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 0.5rem !important; padding: 8px 12px !important; color: #ffffff !important; min-height: 42px; }
     .ts-control .item { background-color: #ef4444 !important; color: #ffffff !important; border-radius: 4px !important; padding: 2px 8px !important; font-weight: 500; }
     .ts-control .item .remove { border-left: none !important; color: #ffffff !important; }
@@ -68,7 +68,12 @@
         <div class="flex items-center gap-4">
             <span class="text-xl font-bold text-primary">NOTAM AREA GENERATOR</span>
         </div>
-        <div class="flex items-center gap-4 text-on-surface-variant">
+        <div class="flex items-center gap-4">
+            <!-- Weather Radar Toggle Button -->
+            <button id="btn-toggle-radar" onclick="toggleWeatherRadar()" class="bg-[#111827] hover:bg-gray-800 border border-outline-variant text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-on-surface-variant">
+                <span class="material-symbols-outlined text-[18px] text-blue-400">radar</span>
+                <span>WEATHER RADAR</span>
+            </button>
             <button class="hover:text-primary transition-colors p-2 rounded-full"><span class="material-symbols-outlined">account_circle</span></button>
         </div>
     </div>
@@ -103,11 +108,20 @@
                 </button>
             </div>
 
-            <!-- Document Menu Button (Adaptive Color & Route) -->
+            <!-- Document Menu Button -->
             <button id="btn-document" class="flex items-center justify-between bg-[#111827] text-white border border-outline-variant rounded-lg px-4 py-3 w-full text-left font-semibold transition-colors mt-1">
                 <div class="flex items-center gap-3">
                     <span id="doc-icon" class="material-symbols-outlined text-gray-400">description</span>
                     <span id="doc-text">Document</span>
+                </div>
+                <span class="material-symbols-outlined text-xs text-gray-400">arrow_forward</span>
+            </button>
+
+            <!-- Mission Archive Menu Button -->
+            <button id="btn-archive" onclick="openArchiveModal()" class="flex items-center justify-between bg-[#111827] hover:bg-gray-800 text-white border border-outline-variant rounded-lg px-4 py-3 w-full text-left font-semibold transition-colors mt-1">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-emerald-400">folder_open</span>
+                    <span>Saved Missions</span>
                 </div>
                 <span class="material-symbols-outlined text-xs text-gray-400">arrow_forward</span>
             </button>
@@ -120,7 +134,7 @@
 
         <!-- ✈️ PANEL: AIRPLANE -->
         <div id="panel-airplane" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
-            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-blue-500">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-blue-500 max-h-[calc(100vh-100px)] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-outline-variant pb-2">
                     <h3 class="text-xs font-bold text-on-surface-variant uppercase flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">flight</span> AIRPLANE PROJECT
@@ -129,13 +143,13 @@
                 </div>
                 <section class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs text-on-surface">Project Name</label>
+                        <label class="text-xs text-on-surface">Project Name (NOTAM)</label>
                         <input id="projectNameAir" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" value="NOTAM A_00">
                     </div>
                     
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Location (อำเภอ / จังหวัด)</label>
-                        <input id="airLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" placeholder="">
+                        <input id="airLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" placeholder="ระบุสถานที่ปฏิบัติงาน">
                     </div>
 
                     <div class="flex flex-col gap-1">
@@ -165,16 +179,21 @@
                             <span class="material-symbols-outlined text-[18px]">public</span> Generate Flight Area
                         </button>
                     </div>
-                    <button id="downloadBtnAir" onclick="downloadZipPackage()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm shadow-md">
-                        <span class="material-symbols-outlined text-[18px]">download</span> Download KML / Excel ZIP
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="saveMissionArchive()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all text-xs shadow-md">
+                            <span class="material-symbols-outlined text-[16px]">bookmark_add</span> บันทึกบล็อกงานนี้
+                        </button>
+                        <button id="downloadBtnAir" onclick="downloadZipPackage()" class="hidden flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all text-xs shadow-md">
+                            <span class="material-symbols-outlined text-[16px]">download</span> Download ZIP
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 🚁 PANEL: UAV -->
         <div id="panel-uav" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
-            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500 max-h-[calc(100vh-100px)] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-outline-variant pb-2">
                     <h3 class="text-xs font-bold text-orange-400 uppercase flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">drone</span> UAV PROJECT DETAILS
@@ -224,7 +243,7 @@
 
         <!-- ✈️ PANEL: DOCUMENT FOR AIRPLANE -->
         <div id="panel-airplane-document" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
-            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-blue-500">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-blue-500 max-h-[calc(100vh-100px)] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-outline-variant pb-2">
                     <h3 class="text-xs font-bold text-blue-400 uppercase flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">description</span> AIRPLANE DOCUMENT INFO
@@ -280,7 +299,7 @@
 
         <!-- 🚁 PANEL: DOCUMENT FOR UAV -->
         <div id="panel-document" class="hidden absolute left-6 top-6 z-10 w-[360px] max-w-[calc(100vw-32px)]">
-            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500">
+            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500 max-h-[calc(100vh-100px)] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-outline-variant pb-2">
                     <h3 class="text-xs font-bold text-orange-400 uppercase flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">description</span> UAV DOCUMENT INFO
@@ -337,6 +356,24 @@
     </main>
 </div>
 
+<!-- 📂 MODAL: SAVED MISSIONS ARCHIVE -->
+<div id="archiveModal" style="display: none; z-index: 99999;" class="fixed inset-0 bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-xl p-6 flex flex-col gap-4 shadow-2xl border border-outline-variant bg-[#1E222A]">
+        <div class="flex justify-between items-center border-b border-outline-variant pb-3">
+            <h3 class="font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-400">folder_open</span> SAVED MISSIONS ARCHIVE
+            </h3>
+            <button type="button" onclick="closeArchiveModal()" class="text-on-surface-variant hover:text-white cursor-pointer"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div id="archiveListContainer" class="flex flex-col gap-2 max-h-[350px] overflow-y-auto pr-1">
+            <!-- Dynamic Mission Items -->
+        </div>
+        <div class="flex justify-end pt-2 border-t border-outline-variant">
+            <button type="button" onclick="closeArchiveModal()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Leaflet JS Script -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- Tom Select JS -->
@@ -346,7 +383,6 @@
 
 <script>
     let currentMode = 'none'; 
-    
     let rawGeoJSONData = null;
     let tomSelectControl = null;
     let geojsonIndexLayer = null; 
@@ -361,21 +397,19 @@
     let uavPolygonLayer = L.polygon([], { color: '#f97316', fillColor: '#f97316', fillOpacity: 0.1, weight: 2, dashArray: '5, 5' });
     let uavInnerLayer = null;
     let uavBufferLayer = null;
+    
     let map = null;
+    let baseMapLayer = null; 
+    let radarLayer = null;
+    let isRadarActive = false;
 
     document.addEventListener("DOMContentLoaded", function () {
-        
         flatpickr("#docStartDate", { dateFormat: "Y-m-d" });
         flatpickr("#docEndDate", { dateFormat: "Y-m-d" });
         flatpickr("#docAirStartDate", { dateFormat: "Y-m-d" });
         flatpickr("#docAirEndDate", { dateFormat: "Y-m-d" });
         
-        const timeConfig = {
-            enableTime: true,
-            noCalendar: true,
-            dateFormat: "H:i",
-            time_24hr: true
-        };
+        const timeConfig = { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true };
         flatpickr("#docStartTime", { ...timeConfig, defaultDate: "08:00" });
         flatpickr("#docEndTime", { ...timeConfig, defaultDate: "17:00" });
         flatpickr("#docAirStartTime", { ...timeConfig, defaultDate: "08:00" });
@@ -426,7 +460,7 @@
         btnDocument.addEventListener('click', function() {
             if (currentMode === 'airplane') {
                 if (!window.lastPayload) {
-                    alert("กรุณากด Generate Flight Area (คำนวณพื้นที่บินเครื่องบิน) ก่อนสร้างเอกสารครับ!");
+                    alert("กรุณากด Generate Flight Area ก่อนสร้างเอกสารครับ!");
                     return;
                 }
                 panelAirplane.classList.add('hidden');
@@ -436,15 +470,16 @@
                 loadPersonnelDataForAirplane();
             } else if (currentMode === 'uav') {
                 panelAirplane.classList.add('hidden');
+                panelUav.classList.add('hidden');
                 panelAirplaneDocument.classList.add('hidden');
                 panelDocument.classList.remove('hidden');
                 loadPersonnelData();
             } else {
-                alert("กรุณาเลือกโหมด (Airplane หรือ UAV) ที่เมนูด้านบนก่อนครับ!");
+                alert("กรุณาเลือกโหมด (Airplane หรือ UAV) ก่อนครับ!");
             }
         });
 
-        // Submit Airplane Document Parameters
+        // Submit Airplane Document
         submitAirDocBtn.addEventListener('click', function() {
             const startDate = document.getElementById('docAirStartDate').value;
             const startTime = document.getElementById('docAirStartTime').value;
@@ -460,7 +495,6 @@
             }
 
             const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-
             let sDay = "", sMonth = "", sYear = "";
             if (startDate) {
                 const parts = startDate.split("-");
@@ -487,11 +521,9 @@
                 const mFloat = (absDeg - d) * 60;
                 const m = Math.floor(mFloat);
                 const s = (mFloat - m) * 60;
-                
                 const dStr = String(d).padStart(isLat ? 2 : 3, '0');
                 const mStr = String(m).padStart(2, '0');
                 const sStr = s.toFixed(2).padStart(5, '0');
-                
                 const hem = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
                 return `${dStr}${mStr}${sStr}${hem}`;
             }
@@ -519,7 +551,7 @@
             panelAirplane.classList.remove('hidden');
         });
 
-        // Submit UAV Document Parameters
+        // Submit UAV Document
         submitDocBtn.addEventListener('click', function() {
             const startDate = document.getElementById('docStartDate').value;
             const startTime = document.getElementById('docStartTime').value;
@@ -572,7 +604,6 @@
             const detailsText2 = bufferString ? `พิกัด ${bufferString}` : `พิกัด`;
 
             const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-
             let sDay = "", sMonth = "", sYear = "";
             if (startDate) {
                 const parts = startDate.split("-");
@@ -664,7 +695,8 @@
         });
 
         map = L.map('map', { renderer: L.canvas() }).setView([13.7563, 100.5018], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+        baseMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' });
+        baseMapLayer.addTo(map);
         
         uavMarkersLayer.addTo(map);
         uavPolygonLayer.addTo(map);
@@ -696,6 +728,7 @@
             });
         }
 
+        // โหลดไฟล์ระวาง L7018
         fetch('/index_l7018.json')
             .then(res => res.json())
             .then(data => {
@@ -754,74 +787,246 @@
             }).catch(e => console.error(e));
     });
 
+    // ==========================================
+    // 👥 PERSONNEL DATA LOADERS (ดึงข้อมูลผู้ประสานงานจาก personnel.json)
+    // ==========================================
     async function loadPersonnelData() {
-        const coordSelect = document.getElementById('docCoordinator');
-        const emergSelect = document.getElementById('docEmergency');
-        
-        if (coordSelect.options.length > 1) return;
-
         try {
             const res = await fetch('/personnel.json');
             if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
             const personnelList = await res.json();
 
+            const coordSelect = document.getElementById('docCoordinator');
+            const emergSelect = document.getElementById('docEmergency');
+            
             coordSelect.innerHTML = '<option value="">-- เลือกผู้ประสานงาน --</option>';
             emergSelect.innerHTML = '<option value="">-- เลือกผู้ติดต่อเร่งด่วน --</option>';
 
             personnelList.forEach(p => {
-                const displayName = p.name || p.fullname || `${p.rank || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim();
-                const phoneStr = p.phone ? ` (${p.phone})` : '';
+                const label = `${p.name || p} ${p.phone ? '(' + p.phone + ')' : ''}`.trim();
                 
                 const opt1 = document.createElement('option');
-                opt1.value = displayName;
-                opt1.textContent = displayName + phoneStr;
+                opt1.value = label;
+                opt1.textContent = label;
                 coordSelect.appendChild(opt1);
 
                 const opt2 = document.createElement('option');
-                opt2.value = displayName;
-                opt2.textContent = displayName + phoneStr;
+                opt2.value = label;
+                opt2.textContent = label;
                 emergSelect.appendChild(opt2);
             });
         } catch (err) {
-            console.error(err);
-            coordSelect.innerHTML = '<option value="">-- โหลดข้อมูลไม่สำเร็จ --</option>';
-            emergSelect.innerHTML = '<option value="">-- โหลดข้อมูลไม่สำเร็จ --</option>';
+            console.error("Error loading personnel for UAV:", err);
         }
     }
 
     async function loadPersonnelDataForAirplane() {
-        const coordSelect = document.getElementById('docAirCoordinator');
-        const emergSelect = document.getElementById('docAirEmergency');
-        
-        if (coordSelect.options.length > 1) return;
-
         try {
             const res = await fetch('/personnel.json');
             if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
             const personnelList = await res.json();
 
+            const coordSelect = document.getElementById('docAirCoordinator');
+            const emergSelect = document.getElementById('docAirEmergency');
+            
             coordSelect.innerHTML = '<option value="">-- เลือกผู้ประสานงาน --</option>';
             emergSelect.innerHTML = '<option value="">-- เลือกผู้ติดต่อเร่งด่วน --</option>';
 
             personnelList.forEach(p => {
-                const displayName = p.name || p.fullname || `${p.rank || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim();
-                const phoneStr = p.phone ? ` (${p.phone})` : '';
+                const label = `${p.name || p} ${p.phone ? '(' + p.phone + ')' : ''}`.trim();
                 
                 const opt1 = document.createElement('option');
-                opt1.value = displayName;
-                opt1.textContent = displayName + phoneStr;
+                opt1.value = label;
+                opt1.textContent = label;
                 coordSelect.appendChild(opt1);
 
                 const opt2 = document.createElement('option');
-                opt2.value = displayName;
-                opt2.textContent = displayName + phoneStr;
+                opt2.value = label;
+                opt2.textContent = label;
                 emergSelect.appendChild(opt2);
             });
         } catch (err) {
-            console.error(err);
-            coordSelect.innerHTML = '<option value="">-- โหลดข้อมูลไม่สำเร็จ --</option>';
-            emergSelect.innerHTML = '<option value="">-- โหลดข้อมูลไม่สำเร็จ --</option>';
+            console.error("Error loading personnel for Airplane:", err);
         }
+    }
+
+    // ==========================================
+    // 🌦️ WEATHER RADAR TOGGLE
+    // ==========================================
+    async function toggleWeatherRadar() {
+        const btn = document.getElementById('btn-toggle-radar');
+        if (!isRadarActive) {
+            try {
+                if (radarLayer) {
+                    map.removeLayer(radarLayer);
+                    radarLayer = null;
+                }
+
+                const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const data = await response.json();
+                
+                if (!data.radar || !data.radar.past || data.radar.past.length === 0) {
+                    throw new Error("No radar data available");
+                }
+
+                const latestFrame = data.radar.past[data.radar.past.length - 1];
+                const path = latestFrame.path; 
+
+                radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                    tileSize: 256,
+                    opacity: 0.85, 
+                    zIndex: 10,
+                    attribution: 'Weather data © RainViewer / TMD',
+                    maxNativeZoom: 6,
+                    maxZoom: 11
+                }).addTo(map);
+
+                if (baseMapLayer && map.hasLayer(baseMapLayer)) {
+                    map.removeLayer(baseMapLayer);
+                }
+                
+                map.setMaxZoom(11);
+                if (map.getZoom() > 11) {
+                    map.setZoom(11);
+                }
+
+                document.getElementById('map').style.backgroundColor = '#0E1117';
+
+                isRadarActive = true;
+                btn.classList.add('bg-blue-600/30', 'border-blue-500', 'text-white');
+            } catch (error) {
+                console.error("Error loading radar:", error);
+                alert("ไม่สามารถดึงข้อมูลเรดาร์อากาศได้ในขณะนี้ครับ");
+            }
+        } else {
+            if (radarLayer) {
+                map.removeLayer(radarLayer);
+                radarLayer = null;
+            }
+            
+            map.setMaxZoom(19);
+
+            if (baseMapLayer && !map.hasLayer(baseMapLayer)) {
+                baseMapLayer.addTo(map);
+            }
+            
+            document.getElementById('map').style.backgroundColor = '';
+
+            isRadarActive = false;
+            btn.classList.remove('bg-blue-600/30', 'border-blue-500', 'text-white');
+        }
+    }
+
+    // ==========================================
+    // 📂 MISSION ARCHIVE (SAVED MISSIONS)
+    // ==========================================
+    function saveMissionArchive() {
+        const selectedSheets = getSelectedSheets();
+        if (!selectedSheets || selectedSheets.length === 0) {
+            alert("กรุณาเลือกระวาง L7018 อย่างน้อย 1 ระวางก่อนบันทึกบล็อกงานครับ!");
+            return;
+        }
+
+        const projectName = document.getElementById('projectNameAir').value.trim() || 'NOTAM_PROJECT';
+        const locationName = document.getElementById('airLocation').value.trim() || '-';
+
+        const missionData = {
+            id: 'mission_' + Date.now(),
+            name: projectName,
+            location: locationName,
+            sheets: selectedSheets,
+            date: new Date().toLocaleDateString('th-TH')
+        };
+
+        let savedMissions = [];
+        try {
+            savedMissions = JSON.parse(localStorage.getItem('saved_airplane_missions') || '[]');
+        } catch (e) {
+            savedMissions = [];
+        }
+        
+        savedMissions = savedMissions.filter(m => m.name !== projectName);
+        savedMissions.push(missionData);
+        localStorage.setItem('saved_airplane_missions', JSON.stringify(savedMissions));
+    }
+
+    function openArchiveModal() {
+        const container = document.getElementById('archiveListContainer');
+        container.innerHTML = '';
+
+        let savedMissions = [];
+        try {
+            savedMissions = JSON.parse(localStorage.getItem('saved_airplane_missions') || '[]');
+        } catch (e) {
+            savedMissions = [];
+        }
+
+        if (savedMissions.length === 0) {
+            container.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">ยังไม่มีประวัติบล็อกงานที่บันทึกไว้</p>';
+        } else {
+            savedMissions.forEach(m => {
+                const item = document.createElement('div');
+                item.className = 'bg-[#111827] border border-gray-700 rounded-lg p-3 flex justify-between items-center hover:border-blue-500 transition-colors';
+                
+                const safeMission = JSON.stringify(m).replace(/"/g, '&quot;');
+                
+                item.innerHTML = `
+                    <div class="flex flex-col gap-0.5">
+                        <span class="font-bold text-sm text-white">${m.name}</span>
+                        <span class="text-xs text-gray-400">📍 ${m.location} | ระวาง: ${m.sheets.join(', ')}</span>
+                        <span class="text-[10px] text-gray-500">บันทึกเมื่อ: ${m.date}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick='loadMissionArchive(${safeMission})' class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer">
+                            <span class="material-symbols-outlined text-[14px]">visibility</span> โหลด
+                        </button>
+                        <button type="button" onclick='deleteMissionArchive("${m.id}")' class="bg-red-600/30 hover:bg-red-600 text-red-400 hover:text-white text-xs px-2 py-1.5 rounded-lg cursor-pointer">
+                            <span class="material-symbols-outlined text-[14px]">delete</span>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        document.getElementById('archiveModal').style.display = 'flex';
+    }
+
+    function closeArchiveModal() {
+        document.getElementById('archiveModal').style.display = 'none';
+    }
+
+    function loadMissionArchive(mission) {
+        currentMode = 'airplane';
+        document.getElementById('panel-uav').classList.add('hidden');
+        document.getElementById('panel-document').classList.add('hidden');
+        document.getElementById('panel-airplane-document').classList.add('hidden');
+        document.getElementById('panel-airplane').classList.remove('hidden');
+        
+        const btnDoc = document.getElementById('btn-document');
+        const docIcon = document.getElementById('doc-icon');
+        const docText = document.getElementById('doc-text');
+        btnDoc.className = 'flex items-center justify-between bg-[#111827] text-white border border-blue-500 hover:bg-blue-600 rounded-lg px-4 py-3 w-full text-left font-semibold transition-colors mt-1';
+        docIcon.className = 'material-symbols-outlined text-blue-400';
+        docText.textContent = 'Airplane Document';
+
+        document.getElementById('projectNameAir').value = mission.name;
+        document.getElementById('airLocation').value = mission.location;
+
+        if (tomSelectControl) {
+            tomSelectControl.clear();
+            mission.sheets.forEach(s => tomSelectControl.addItem(s));
+        }
+
+        calculateFlightArea();
+        closeArchiveModal();
+    }
+
+    function deleteMissionArchive(id) {
+        let savedMissions = JSON.parse(localStorage.getItem('saved_airplane_missions') || '[]');
+        savedMissions = savedMissions.filter(m => m.id !== id);
+        localStorage.setItem('saved_airplane_missions', JSON.stringify(savedMissions));
+        openArchiveModal();
     }
 
     // ==========================================
@@ -863,21 +1068,14 @@
         formData.append('file', file);
 
         try {
-            const res = await fetch('/api/upload_kml', {
-                method: 'POST',
-                body: formData
-            });
+            const res = await fetch('/api/upload_kml', { method: 'POST', body: formData });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Upload failed");
 
             uavPoints = data.coordinates.map(c => L.latLng(c[1], c[0]));
-            
-            if (uavPoints.length > 1 && 
-                uavPoints[0].lat === uavPoints[uavPoints.length-1].lat && 
-                uavPoints[0].lng === uavPoints[uavPoints.length-1].lng) {
+            if (uavPoints.length > 1 && uavPoints[0].lat === uavPoints[uavPoints.length-1].lat && uavPoints[0].lng === uavPoints[uavPoints.length-1].lng) {
                 uavPoints.pop();
             }
-            
             if (data.location_name && data.location_name !== "") {
                document.getElementById('uavLocation').value = data.location_name;
             }
@@ -886,7 +1084,6 @@
             if (uavPoints.length > 0) {
                 map.fitBounds(uavPolygonLayer.getBounds(), { padding: [30, 30] });
             }
-            alert("นำเข้าพิกัด KML สำเร็จ พร้อมคำนวณ Buffer ได้เลยครับ!");
         } catch (err) {
             alert("เกิดข้อผิดพลาดในการอัปโหลด: " + err.message);
         }
@@ -894,7 +1091,7 @@
 
     async function calculateUAVArea() {
         if (uavPoints.length < 3) {
-            alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML เพื่อสร้างพื้นที่ทำงานครับสุดหล่อ!");
+            alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML ก่อนครับ!");
             return;
         }
 
@@ -903,7 +1100,6 @@
         const locationName = document.getElementById('uavLocation').value.trim() || '-';
         
         const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
-        
         const payloadCoords = [...polygonCoords];
         if (payloadCoords.length > 0) {
             payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
@@ -989,21 +1185,12 @@
     // ✈️ AIRPLANE LOGIC
     // ==========================================
     function clearAirplaneMap() {
-        if (innerLayer) {
-            map.removeLayer(innerLayer);
-            innerLayer = null;
-        }
-        if (bufferLayer) {
-            map.removeLayer(bufferLayer);
-            bufferLayer = null;
-        }
-        if (tomSelectControl) {
-            tomSelectControl.clear();
-        }
+        if (innerLayer) { map.removeLayer(innerLayer); innerLayer = null; }
+        if (bufferLayer) { map.removeLayer(bufferLayer); bufferLayer = null; }
+        if (tomSelectControl) { tomSelectControl.clear(); }
         const downloadBtn = document.getElementById('downloadBtnAir');
-        if (downloadBtn) {
-            downloadBtn.classList.add('hidden');
-        }
+        if (downloadBtn) { downloadBtn.classList.add('hidden'); }
+        document.getElementById('airLocation').value = '';
         window.lastPayload = null;
     }
 
@@ -1050,7 +1237,7 @@
     async function calculateFlightArea() {
         const selectedSheets = getSelectedSheets();
         if (!selectedSheets || selectedSheets.length === 0) {
-            alert("กรุณาเลือกระวาง L7018 อย่างน้อย 1 ระวางครับสุดหล่อ!");
+            alert("กรุณาเลือกระวาง L7018 อย่างน้อย 1 ระวางครับ!");
             return;
         }
 
@@ -1116,7 +1303,7 @@
 
     async function downloadZipPackage() {
         if (!window.lastPayload) {
-            alert("กรุณากดคำนวณก่อนดาวน์โหลดครับสุดหล่อ!");
+            alert("กรุณากดคำนวณก่อนดาวน์โหลดครับ!");
             return;
         }
 
