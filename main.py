@@ -387,7 +387,7 @@ def upload_kml():
 # ==========================================
 # 📡 UAV LINE-OF-SIGHT (LOS) ANALYSIS API
 # ==========================================
-@app.route('/api/analyze_uav_los', methods=['POST'])
+@app.route('/api/analyze_uav_los', methods=['POST'], strict_slashes=False)
 def analyze_uav_los():
     """คำนวณโปรไฟล์ความสูงแนวบินและตรวจสอบจุดบดบังสัญญาณ (LOS) แบบเสถียร"""
     data = request.get_json() or {}
