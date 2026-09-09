@@ -4,3 +4,5 @@ pyproj
 simplekml
 openpyxl
 gunicorn
+requests
+numpy
