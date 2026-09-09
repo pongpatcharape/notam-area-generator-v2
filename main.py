@@ -6,6 +6,9 @@ import xml.etree.ElementTree as ET
 import pyproj
 import simplekml
 import openpyxl
+import requests
+import numpy as np
+import time  # ⬅️ เพิ่มไลบรารีนี้สำหรับหน่วงเวลา (Rate Limit Protection)
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from shapely.geometry import Polygon, Point, shape
 from shapely.ops import transform
@@ -14,12 +17,11 @@ from flask import Flask, request, jsonify, send_file, send_from_directory
 app = Flask(__name__)
 
 # ==========================================
-# 🗺️ ระบบค้นหาสถานที่ (Local Reverse Geocoding) ทำงานหลังบ้าน
+# 🗺️ ระบบค้นหาสถานที่ (Local Reverse Geocoding)
 # ==========================================
 tambon_features = []
 geojson_path = 'tambon_thailand.json'
 
-# โหลดข้อมูลเข้าหน่วยความจำแค่ครั้งเดียวตอนเปิดเซิร์ฟเวอร์
 if os.path.exists(geojson_path):
     print("กำลังโหลดข้อมูลขอบเขตตำบลเพื่อใช้ค้นหาสถานที่ (ทำงานเบื้องหลัง)...")
     try:
@@ -47,12 +49,9 @@ def get_local_location(lon, lat):
     pt = Point(lon, lat)
     for item in tambon_features:
         minx, miny, maxx, maxy = item['bounds']
-        # 1. เช็ค Bounding Box ก่อน (ไวมาก)
         if minx <= lon <= maxx and miny <= lat <= maxy:
-            # 2. เช็ค Polygon ละเอียด (ถ้าผ่านเงื่อนไขแรก)
             if item['geom'].contains(pt):
                 props = item['props']
-                # ดึงฟิลด์ตามตาราง Attribute ของผู้การ
                 tam = props.get('TAM_NAM_T', '')
                 amp = props.get('AMPHOE_T', '')
                 prov = props.get('PROV_NAM_T', '')
@@ -65,7 +64,6 @@ def get_local_location(lon, lat):
                 return " ".join(parts).strip()
     return ""
 
-
 def dd_to_dms(dd, is_lat=True):
     direction = ("N" if dd >= 0 else "S") if is_lat else ("E" if dd >= 0 else "W")
     dd = abs(dd)
@@ -74,6 +72,107 @@ def dd_to_dms(dd, is_lat=True):
     minutes = int(minutes_float)
     seconds = round((minutes_float - minutes) * 60, 2)
     return f'{degrees}° {minutes}\' {seconds:.2f}" {direction}'
+
+
+# ==========================================
+# ⛰️ ฟังก์ชันหาความสูงภูมิประเทศ (Elevation - High Precision)
+# ==========================================
+def fetch_elevation_safe(lats, lons):
+    """ฟังก์ชันยิง API พร้อมดักจับข้อผิดพลาดและใส่ User-Agent ป้องกันการถูกบล็อก"""
+    if not lats or not lons:
+        return []
+    
+    url = f"https://api.open-meteo.com/v1/elevation?latitude={','.join(map(str, lats))}&longitude={','.join(map(str, lons))}"
+    headers = {'User-Agent': 'AeroFocusMissionControl/1.0'}
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json().get("elevation", [])
+            if data:
+                return [e if e is not None else 10.0 for e in data]
+        else:
+            # ปริ้นต์เตือนใน Terminal ทันทีถ้า API ล่มหรือโดน Rate Limit
+            print(f"⚠️ Elevation API Error Status: {response.status_code}, Response: {response.text}")
+    except Exception as e:
+        print(f"Elevation API Safe Mode Warning: {e}")
+    
+    return [20.0] * len(lats)
+
+def get_elevation_data(coords):
+    """ดึงข้อมูลความสูงแบบเพิ่มความหนาแน่น (High-Density Grid & Boundary Sampling) แม่นยำสูง"""
+    try:
+        poly = Polygon(coords)
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+            
+        minx, miny, maxx, maxy = poly.bounds
+        
+        # เพิ่มความละเอียดกริดภายในเป็น 20x20 จุด (คำนวณแม่นยำสูงขึ้น)
+        span_x = maxx - minx
+        span_y = maxy - miny
+        step_x = span_x / 20.0
+        step_y = span_y / 20.0
+        if step_x == 0: step_x = 0.005
+        if step_y == 0: step_y = 0.005
+
+        lons = np.arange(minx, maxx + step_x/2, step_x)
+        lats = np.arange(miny, maxy + step_y/2, step_y)
+        
+        grid_lats = []
+        grid_lons = []
+        
+        # 1. เก็บจุดกริดภายใน Polygon
+        for lat in lats:
+            for lon in lons:
+                pt = Point(lon, lat)
+                if poly.contains(pt) or poly.touches(pt):
+                    grid_lats.append(round(lat, 5))
+                    grid_lons.append(round(lon, 5))
+        
+        # 2. เพิ่มจุดมุม (Vertices) และจุดกึ่งกลางขอบแปลง เพื่อความชัวร์ไม่พลาดจุดพีคที่ขอบ
+        for i in range(len(coords)):
+            p1 = coords[i]
+            p2 = coords[(i + 1) % len(coords)]
+            grid_lats.append(round(p1[1], 5))
+            grid_lons.append(round(p1[0], 5))
+            
+            mid_lon = (p1[0] + p2[0]) / 2.0
+            mid_lat = (p1[1] + p2[1]) / 2.0
+            grid_lats.append(round(mid_lat, 5))
+            grid_lons.append(round(mid_lon, 5))
+            
+        # ตัดจุดพิกัดที่ซ้ำกันออกเพื่อประหยัดโควต้า
+        seen = set()
+        unique_lats = []
+        unique_lons = []
+        for lat, lon in zip(grid_lats, grid_lons):
+            if (lat, lon) not in seen:
+                seen.add((lat, lon))
+                unique_lats.append(lat)
+                unique_lons.append(lon)
+
+        # แบ่งส่งเป็นชุดๆ (Chunk ละไม่เกิน 80 จุด) ป้องกัน URL ยาวเกินขีดจำกัดของ API
+        max_chunk = 80
+        all_elevations = []
+        
+        for i in range(0, len(unique_lats), max_chunk):
+            chunk_lats = unique_lats[i:i + max_chunk]
+            chunk_lons = unique_lons[i:i + max_chunk]
+            elevs = fetch_elevation_safe(chunk_lats, chunk_lons)
+            if elevs:
+                all_elevations.extend([e for e in elevs if e is not None])
+            time.sleep(0.2)  # 🚀 หน่วงเวลา 0.2 วินาทีต่อ Chunk ป้องกันโดนบล็อก Rate Limit (HTTP 429)
+        
+        if all_elevations:
+            return {
+                "min_elevation": round(min(all_elevations), 1),
+                "max_elevation": round(max(all_elevations), 1)
+            }
+    except Exception as e:
+        print(f"Elevation Processing Error: {e}")
+        
+    return {"min_elevation": 10.0, "max_elevation": 50.0}
 
 @app.route('/')
 def index():
@@ -186,12 +285,11 @@ def download_package():
         z.writestr(f"{project_name}_coordinates.xlsx", excel_bytes.getvalue())
 
     zip_buffer.seek(0)
-    
     return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name=f'{project_name}_Package.zip')
 
 
 # ==========================================
-# 🚁 UAV API
+# 🚁 UAV API (รองรับ Smart Caching)
 # ==========================================
 @app.route('/api/calculate_uav', methods=['POST'])
 def calculate_uav():
@@ -199,11 +297,14 @@ def calculate_uav():
     coords = data.get('coordinates', [])
     buffer_meters = float(data.get('buffer_meters', 50))
     
+    # 📌 รับค่า Cache elevation จาก frontend (กรณีเปลี่ยนแค่ buffer แต่แปลงไม่ขยับ)
+    cached_min = data.get('cached_min_elevation')
+    cached_max = data.get('cached_max_elevation')
+    
     if len(coords) < 3:
         return jsonify({"error": "Need at least 3 coordinates"}), 400
     
     poly = Polygon(coords)
-    
     centroid_lon = poly.centroid.x
     centroid_lat = poly.centroid.y
     
@@ -219,13 +320,23 @@ def calculate_uav():
     poly_wgs84 = transform(project_to_wgs84, poly_utm)
     buffer_wgs84 = transform(project_to_wgs84, buffer_utm)
 
-    # วิ่งไปค้นหาชื่อสถานที่จากฟังก์ชัน Local ที่เราเขียนไว้ด้านบน
     location_name = get_local_location(centroid_lon, centroid_lat)
+    
+    # 🚀 ถ้ามี Cache ส่งมา แปลงเดิมเป๊ะ จะดึงค่าเดิมทันทีโดยไม่ต้องยิง API ใหม่
+    if cached_min is not None and cached_max is not None:
+        elevation_data = {
+            "min_elevation": cached_min,
+            "max_elevation": cached_max
+        }
+    else:
+        elevation_data = get_elevation_data(list(poly_wgs84.exterior.coords))
     
     return jsonify({
         "inner_coords": list(poly_wgs84.exterior.coords),
         "buffer_coords": list(buffer_wgs84.exterior.coords),
-        "location_name": location_name # ส่งกลับไปให้หน้าเว็บพิมพ์ลงใน Textbox 
+        "location_name": location_name,
+        "elevation": elevation_data,
+        "centroid": [centroid_lon, centroid_lat]
     })
 
 @app.route('/api/upload_kml', methods=['POST'])
@@ -272,13 +383,123 @@ def upload_kml():
         
     return jsonify({"status": "success", "coordinates": coords})
 
+
+# ==========================================
+# 📡 UAV LINE-OF-SIGHT (LOS) ANALYSIS API
+# ==========================================
+@app.route('/api/analyze_uav_los', methods=['POST'])
+def analyze_uav_los():
+    """คำนวณโปรไฟล์ความสูงแนวบินและตรวจสอบจุดบดบังสัญญาณ (LOS) แบบเสถียร"""
+    data = request.get_json() or {}
+    base_coords = data.get('base_coords')      
+    target_coords = data.get('target_coords')  
+    antenna_height = float(data.get('antenna_height', 5.0))  
+    drone_alt_agl = float(data.get('drone_alt_agl', 100.0))  
+
+    if not base_coords or not target_coords:
+        return jsonify({"error": "Missing base_coords or target_coords"}), 400
+
+    lon1, lat1 = base_coords[0], base_coords[1]
+    lon2, lat2 = target_coords[0], target_coords[1]
+
+    geod = pyproj.Geod(ellps='WGS84')
+    _, _, total_distance = geod.inv(lon1, lat1, lon2, lat2)
+
+    num_samples = 25
+    sampled_coords = [[lon1, lat1]]
+    if num_samples > 2:
+        npts = geod.npts(lon1, lat1, lon2, lat2, num_samples - 2)
+        for pt in npts:
+            sampled_coords.append([pt[0], pt[1]])
+    sampled_coords.append([lon2, lat2])
+
+    lats = [str(c[1]) for c in sampled_coords]
+    lons = [str(c[0]) for c in sampled_coords]
+    
+    elevations = fetch_elevation_safe(lats, lons)
+
+    if len(elevations) != len(sampled_coords):
+        elevations = [10.0] * len(sampled_coords)
+
+    z_start_msl = elevations[0] + antenna_height
+    z_end_msl = elevations[-1] + drone_alt_agl
+
+    profile = []
+    is_blocked = False
+    obstructions = []
+
+    for i, coord in enumerate(sampled_coords):
+        if i == 0:
+            dist_from_base = 0.0
+        elif i == len(sampled_coords) - 1:
+            dist_from_base = total_distance
+        else:
+            _, _, dist_from_base = geod.inv(lon1, lat1, coord[0], coord[1])
+
+        ratio = dist_from_base / total_distance if total_distance > 0 else 0
+        los_alt_msl = z_start_msl + ratio * (z_end_msl - z_start_msl)
+        terrain_alt_msl = elevations[i]
+
+        blocked = terrain_alt_msl > los_alt_msl
+        if blocked:
+            is_blocked = True
+            obstructions.append({
+                "distance_m": round(dist_from_base, 1),
+                "terrain_m": round(terrain_alt_msl, 1),
+                "los_m": round(los_alt_msl, 1),
+                "coord": coord
+            })
+
+        profile.append({
+            "distance_m": round(dist_from_base, 1),
+            "terrain_m": round(terrain_alt_msl, 1),
+            "los_m": round(los_alt_msl, 1),
+            "blocked": blocked,
+            "coord": coord
+        })
+
+    base_location = get_local_location(lon1, lat1)
+
+    return jsonify({
+        "status": "success",
+        "is_blocked": is_blocked,
+        "total_distance_m": round(total_distance, 1),
+        "base_info": {
+            "coord": base_coords,
+            "antenna_height_m": antenna_height,
+            "terrain_elevation_m": round(elevations[0], 1),
+            "total_antenna_msl": round(z_start_msl, 1),
+            "location_name": base_location
+        },
+        "target_info": {
+            "coord": target_coords,
+            "drone_alt_agl_m": drone_alt_agl,
+            "terrain_elevation_m": round(elevations[-1], 1),
+            "total_drone_msl": round(z_end_msl, 1)
+        },
+        "profile": profile,
+        "obstructions_count": len(obstructions)
+    })
+
+# ==========================================
+# 📥 DOWNLOAD UAV PACKAGE & EXCEL
+# ==========================================
 @app.route('/api/download_uav', methods=['POST'])
 def download_uav():
     data = request.get_json() or {}
     project_name = data.get('project_name', 'UAV_PROJECT').strip().replace(' ', '_')
-    location_name = data.get('location_name', '-') # รับค่า location มาลง Excel
+    location_name = data.get('location_name', '-') 
     coords = data.get('coordinates', [])
     buffer_meters = float(data.get('buffer_meters', 50))
+    
+    base_point = data.get('base_point')
+    
+    min_elev = data.get('min_elevation')
+    max_elev = data.get('max_elevation')
+    if min_elev is None or max_elev is None:
+        elev_data = get_elevation_data(coords)
+        min_elev = elev_data.get('min_elevation', 10.0)
+        max_elev = elev_data.get('max_elevation', 50.0)
     
     if len(coords) < 3:
         return jsonify({"error": "Invalid coordinates"}), 400
@@ -319,27 +540,47 @@ def download_uav():
         pnt = kml_buffer.newpoint(name=f"Buf_Pt_{idx}", coords=[(lon, lat)])
         pnt.description = f"Lat: {lat:.6f}, Lon: {lon:.6f}\nDMS: {dd_to_dms(lat, True)}, {dd_to_dms(lon, False)}"
 
-    # ---------------------------------------------
-    # 📊 EXCEL GENERATION (อัปเกรดใหม่)
-    # ---------------------------------------------
+    def safe_round(val, places=6):
+        try:
+            return round(float(val), places)
+        except (ValueError, TypeError):
+            return str(val)
+
+    if base_point:
+        tk_lat_dd = base_point.get('lat', '-')
+        tk_lng_dd = base_point.get('lng', '-')
+        
+        if tk_lat_dd != '-' and tk_lng_dd != '-':
+            tk_lat_dms = dd_to_dms(tk_lat_dd, True)
+            tk_lng_dms = dd_to_dms(tk_lng_dd, False)
+        else:
+            tk_lat_dms, tk_lng_dms = "-", "-"
+    else:
+        tk_lat_dms, tk_lng_dms, tk_lat_dd, tk_lng_dd = "-", "-", "-", "-"
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Mission_Data"
     ws.views.sheetView[0].showGridLines = False 
     
-    # ส่วนหัวข้อมูล (Summary Section)
     ws.append(["📌 Project Name:", project_name])
     ws.append(["📍 Location:", location_name])
+    
+    ws.append(["🚀 Take-off Latitude:", tk_lat_dms, safe_round(tk_lat_dd)])
+    ws.append(["🚀 Take-off Longitude:", tk_lng_dms, safe_round(tk_lng_dd)])
+    
     ws.append(["🎯 Centroid Latitude:", dd_to_dms(centroid_lat, True), round(centroid_lat, 6)])
     ws.append(["🎯 Centroid Longitude:", dd_to_dms(centroid_lon, False), round(centroid_lon, 6)])
     ws.append(["📏 Buffer Distance:", f"{buffer_meters} Meters"])
+    ws.append(["⛰️ Min Elevation (SRTM):", f"{min_elev} Meters MSL"])
+    ws.append(["⛰️ Max Elevation (SRTM):", f"{max_elev} Meters MSL"])
     ws.append([]) 
 
     bold_font = Font(bold=True)
-    for r in range(1, 6):
+    for r in range(1, 10):
         ws.cell(row=r, column=1).font = bold_font
 
-    table_start_row = 7
+    table_start_row = 11
     ws.append(["Buffer Vertex", "Latitude (DMS)", "Longitude (DMS)", "Latitude (DD)", "Longitude (DD)"])
 
     for idx, pt in enumerate(buffer_coords[:-1], start=1):
@@ -360,7 +601,7 @@ def download_uav():
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="center")
 
-    for col, width in {'A': 20, 'B': 22, 'C': 22, 'D': 18, 'E': 18}.items():
+    for col, width in {'A': 22, 'B': 22, 'C': 22, 'D': 18, 'E': 18}.items():
         ws.column_dimensions[col].width = width
 
     excel_bytes = io.BytesIO()
@@ -374,7 +615,6 @@ def download_uav():
         z.writestr(f"{project_name}_coordinates.xlsx", excel_bytes.getvalue())
 
     zip_buffer.seek(0)
-    
     return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name=f'{project_name}_UAV_Package.zip')
 
 if __name__ == '__main__':
