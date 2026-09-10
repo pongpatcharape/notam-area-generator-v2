@@ -164,13 +164,13 @@
                     </div>
                     
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs text-on-surface">Location (อำเภอ / จังหวัด)</label>
-                        <input id="airLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" placeholder="ระบุสถานที่ปฏิบัติงาน">
+                        <label class="text-xs text-on-surface">Location</label>
+                        <input id="airLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-blue-500 outline-none w-full" type="text" placeholder="Specify work location">
                     </div>
 
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface font-medium">L7018 SHEET:</label>
-                        <select id="sheetSelect" multiple placeholder="พิมพ์ค้นหา หรือเลือกระวาง..." class="w-full"></select>
+                        <select id="sheetSelect" multiple placeholder="Type to search or click to select...." class="w-full"></select>
                     </div>
                 </section>
                 <section class="flex flex-col gap-3">
@@ -197,7 +197,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button onclick="saveMissionArchive()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all text-xs shadow-md">
-                            <span class="material-symbols-outlined text-[16px]">bookmark_add</span> บันทึกบล็อกงานนี้
+                            <span class="material-symbols-outlined text-[16px]">bookmark_add</span> Save block
                         </button>
                         <button id="downloadBtnAir" onclick="downloadZipPackage()" class="hidden flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all text-xs shadow-md">
                             <span class="material-symbols-outlined text-[16px]">download</span> Download ZIP
@@ -224,7 +224,7 @@
                     
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-on-surface">Location</label>
-                        <input id="uavLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" placeholder="สถานที่ปฏิบัติงาน">
+                        <input id="uavLocation" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-orange-500 outline-none w-full" type="text" placeholder="Work location">
                     </div>
                     
                     <div class="flex flex-col gap-1 mt-2">
@@ -392,8 +392,8 @@
         </div>
 
         <!-- ⛰️ RIGHT SIDEBAR: LOS PROFILE & ELEVATION GRAPH -->
-        <div id="losProfileRightSidebar" style="z-index: 99999;" class="translate-x-full fixed right-0 top-16 bottom-0 w-full md:w-[50%] lg:w-[48%] glass-panel border-l border-blue-500/50 shadow-2xl bg-[#1E222A]/98 p-5 flex flex-col gap-3 overflow-y-auto">
-            <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+        <div id="losProfileRightSidebar" style="z-index: 99999;" class="translate-x-full fixed right-0 top-16 bottom-0 w-full md:w-[50%] lg:w-[48%] glass-panel border-l border-blue-500/50 shadow-2xl bg-[#1E222A]/98 p-5 flex flex-col gap-3 overflow-hidden">
+            <div class="flex justify-between items-center border-b border-outline-variant pb-2 shrink-0">
                 <div class="flex items-center gap-3 flex-wrap">
                     <h3 class="font-bold text-on-surface flex items-center gap-2 text-sm sm:text-base">
                         <span class="material-symbols-outlined text-blue-400 text-xl">stacked_line_chart</span> Flight Path Analysis
@@ -403,19 +403,19 @@
                 <button type="button" onclick="closeLosProfileModal()" class="text-on-surface-variant hover:text-white cursor-pointer p-1.5 rounded-lg bg-gray-800"><span class="material-symbols-outlined text-base">close</span></button>
             </div>
             
-            <div class="flex flex-col gap-2 text-xs">
+            <div class="flex flex-col gap-2 text-xs shrink-0">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div class="flex flex-col gap-1">
                         <label class="text-gray-300 font-medium">Base Coordinate</label>
                         <div class="flex gap-1">
-                            <input id="losBaseInput" type="text" placeholder="คลิกเลือกบนแผนที่" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full" readonly>
+                            <input id="losBaseInput" type="text" placeholder="Click to select on map" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full" readonly>
                             <button type="button" onclick="activatePickMode('base')" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-colors">Set Base</button>
                         </div>
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-gray-300 font-medium">Target Coordinate</label>
                         <div class="flex gap-1">
-                            <input id="losTargetInput" type="text" placeholder="คลิกเลือกบนแผนที่" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full" readonly>
+                            <input id="losTargetInput" type="text" placeholder="Click to select on map" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full" readonly>
                             <button type="button" onclick="activatePickMode('target')" class="bg-purple-600 hover:bg-purple-500 text-white px-2.5 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-colors">Set Target</button>
                         </div>
                     </div>
@@ -428,26 +428,29 @@
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-gray-300 font-medium">Altitude AGL (m)</label>
-                        <input id="losDroneAlt" type="number" value="100" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full">
+                        <input id="losDroneAlt" type="number" value="400" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full">
                     </div>
                 </div>
 
                 <div class="flex gap-2 pt-1">
-                    <button type="button" onclick="runLosAnalysis()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">analytics</span> Run Analysis
+                    <button type="button" onclick="runLosAnalysis()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-2 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1" title="คำนวณแนวสายตา">
+                        <span class="material-symbols-outlined text-[16px]">analytics</span> Analyze
                     </button>
-                    <button type="button" onclick="saveBasePoint()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">bookmark_add</span> Save Base
+                    <button type="button" onclick="saveBasePoint()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-2 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1" title="บันทึกจุดปล่อย">
+                        <span class="material-symbols-outlined text-[16px]">bookmark_add</span> Save
+                    </button>
+                    <button type="button" onclick="clearLosData()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-2 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1" title="ล้างข้อมูลแนวเล็ง">
+                        <span class="material-symbols-outlined text-[16px]">delete</span> Clear
                     </button>
                 </div>
             </div>
 
-            <!-- Canvas สำหรับกราฟ -->
-            <div class="w-full flex-1 min-h-[340px] relative bg-[#111827] rounded-lg p-3 border border-gray-800 flex flex-col">
+            <!-- Canvas สำหรับกราฟ (ใช้ flex-1 ยืดหยุ่นพอดีพื้นที่ ไม่ล้นหน้าจอ) -->
+            <div class="w-full flex-1 min-h-[180px] relative bg-[#111827] rounded-lg p-3 border border-gray-800 flex flex-col">
                 <canvas id="losChart" class="w-full h-full"></canvas>
             </div>
 
-            <div class="flex justify-between items-center pt-2 border-t border-outline-variant text-xs">
+            <div class="flex justify-between items-center pt-2 border-t border-outline-variant text-xs shrink-0">
                 <div class="flex items-center gap-1">
                     <button type="button" onclick="panLeftLosChart()" class="bg-gray-800 hover:bg-gray-700 text-blue-400 text-xs px-2 py-1.5 rounded-lg font-semibold flex items-center gap-1 cursor-pointer" title="เลื่อนซ้าย">
                         <span class="material-symbols-outlined text-[14px]">chevron_left</span>
@@ -514,7 +517,6 @@
     let uavInnerLayer = null;
     let uavBufferLayer = null;
 
-    // 🚀 Smart Caching Variables สำหรับกันโหลดความสูงซ้ำซ้อน
     let lastUavPointsSignature = "";
     let cachedMinElev = null;
     let cachedMaxElev = null;
@@ -908,7 +910,7 @@
         const selectEl = document.getElementById('sheetSelect');
         if (selectEl) {
             tomSelectControl = new TomSelect('#sheetSelect', {
-                plugins: ['remove_button', 'clear_button'], create: false, maxItems: null, placeholder: 'พิมพ์ค้นหา หรือเลือกระวาง...'
+                plugins: ['remove_button', 'clear_button'], create: false, maxItems: null, placeholder: 'search or click to select....'
             });
             tomSelectControl.on('item_remove', function(value) {
                 if (sheetLayers[value]) sheetLayers[value].setStyle({ color: '#2563eb', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.05 });
@@ -1098,16 +1100,31 @@
         const ctx = document.getElementById('losChart').getContext('2d');
         if (losChartInstance) losChartInstance.destroy();
 
-        const terrainData = data.profile.map(p => ({
+        const profile = data.profile || [];
+        if (profile.length === 0) return;
+
+        const antennaH = parseFloat(document.getElementById('losAntennaHeight').value || 5);
+        const droneAlt = parseFloat(document.getElementById('losDroneAlt').value || 100);
+        const totalDist = profile[profile.length - 1].distance_m || 1;
+        const startLos = profile[0].terrain_m + antennaH;
+        const endLos = profile[profile.length - 1].terrain_m + droneAlt;
+
+        const terrainData = profile.map(p => ({
             x: parseFloat((p.distance_m / 1000).toFixed(3)),
             y: p.terrain_m
         }));
-        const losData = data.profile.map(p => ({
+        const losData = profile.map(p => ({
             x: parseFloat((p.distance_m / 1000).toFixed(3)),
             y: p.los_m
         }));
 
-        const maxVal = Math.max(...data.profile.map(p => Math.max(p.terrain_m, p.los_m)));
+        // พิกัดจุด Base และ Target บนเส้นแนวเล็ง (สีเขียว)
+        const endpointData = [
+            { x: 0, y: startLos },
+            { x: parseFloat((totalDist / 1000).toFixed(3)), y: endLos }
+        ];
+
+        const maxVal = Math.max(...profile.map(p => Math.max(p.terrain_m, p.los_m)), startLos, endLos);
         const suggestedYMax = Math.ceil((maxVal + 50) / 50) * 50;
 
         losChartInstance = new Chart(ctx, {
@@ -1131,6 +1148,15 @@
                         fill: false,
                         borderWidth: 2,
                         pointRadius: 0
+                    },
+                    {
+                        label: 'Base & Target Points',
+                        data: endpointData,
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b981',
+                        pointRadius: 4,
+                        pointHoverRadius: 8,
+                        showLine: false // ไม่ลากเส้นเชื่อมจุด เพื่อให้แสดงเฉพาะจุดหัวและท้าย
                     }
                 ]
             },
@@ -1226,6 +1252,35 @@
         delete losChartInstance.options.scales.x.min;
         delete losChartInstance.options.scales.x.max;
         losChartInstance.update('none');
+    }
+
+    function clearLosData() {
+        baseCoord = null;
+        targetCoord = null;
+        pickMode = 'none';
+        
+        if (baseMarker) {
+            map.removeLayer(baseMarker);
+            baseMarker = null;
+        }
+        if (targetMarker) {
+            map.removeLayer(targetMarker);
+            targetMarker = null;
+        }
+        if (losLineLayer) {
+            map.removeLayer(losLineLayer);
+            losLineLayer = null;
+        }
+        
+        document.getElementById('losBaseInput').value = '';
+        document.getElementById('losTargetInput').value = '';
+        
+        if (losChartInstance) {
+            losChartInstance.destroy();
+            losChartInstance = null;
+        }
+        
+        document.getElementById('losStatusText').textContent = "status : ready";
     }
 
     async function loadPersonnelData() {
@@ -1520,7 +1575,7 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        clearUAVMap(); // Clear cache when new file uploaded
+        clearUAVMap();
 
         const formData = new FormData();
         formData.append('file', file);
@@ -1572,7 +1627,6 @@
             base_point: savedBasePointData ? savedBasePointData : null
         };
 
-        // 🚀 ตรวจสอบว่าพิกัดแปลงเดิมหรือไม่ ถ้าเดิมให้แนบ Cache ไปด้วยเพื่อความรวดเร็ว
         const isSamePolygon = (currentSignature === lastUavPointsSignature);
         if (isSamePolygon && cachedMinElev !== null && cachedMaxElev !== null) {
             payload.cached_min_elevation = cachedMinElev;
@@ -1584,7 +1638,7 @@
         
         if (btn) {
             btn.disabled = true;
-            const loadingText = isSamePolygon ? " " : "กำลังประมวลผล...";
+            const loadingText = isSamePolygon ? " " : "Processing...";
             btn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">sync</span> ${loadingText}`;
             btn.classList.add('opacity-75', 'cursor-not-allowed');
         }
@@ -1791,7 +1845,7 @@
             window.lastPayload = payload;
 
         } catch (err) {
-            alert("เกิดข้อผิดพลาด: " + err.message);
+            alert("เกิดข้อผิดพลาด: " + err.message)
         }
     }
 
