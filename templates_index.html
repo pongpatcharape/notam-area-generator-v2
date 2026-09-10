@@ -840,6 +840,7 @@
         });
 
         map = L.map('map', { renderer: L.canvas() }).setView([13.7563, 100.5018], 6);
+        map.zoomControl.setPosition('topright');
         
         baseMapLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
