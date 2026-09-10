@@ -8,7 +8,7 @@ import simplekml
 import openpyxl
 import requests
 import numpy as np
-import time  # ⬅️ เพิ่มไลบรารีนี้สำหรับหน่วงเวลา (Rate Limit Protection)
+import time
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from shapely.geometry import Polygon, Point, shape
 from shapely.ops import transform
@@ -75,29 +75,58 @@ def dd_to_dms(dd, is_lat=True):
 
 
 # ==========================================
-# ⛰️ ฟังก์ชันหาความสูงภูมิประเทศ (Elevation - High Precision)
+# ⛰️ ฟังก์ชันหาความสูงภูมิประเทศ (Elevation - High Precision + Multi-Provider Fallback)
 # ==========================================
 def fetch_elevation_safe(lats, lons):
-    """ฟังก์ชันยิง API พร้อมดักจับข้อผิดพลาดและใส่ User-Agent ป้องกันการถูกบล็อก"""
+    """ระบบดึงความสูงอัจฉริยะ: มีระบบ Retry (ลองซ้ำ) และ Multi-API Fallback สำรอง"""
     if not lats or not lons:
         return []
     
-    url = f"https://api.open-meteo.com/v1/elevation?latitude={','.join(map(str, lats))}&longitude={','.join(map(str, lons))}"
-    headers = {'User-Agent': 'AeroFocusMissionControl/1.0'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     
+    # -------------------------------------------------------------
+    # 1. ตัวเลือกหลัก: Open-Meteo API (พร้อมระบบ Retry 3 รอบ)
+    # -------------------------------------------------------------
+    url_open_meteo = f"https://api.open-meteo.com/v1/elevation?latitude={','.join(map(str, lats))}&longitude={','.join(map(str, lons))}"
+    
+    for attempt in range(3):
+        try:
+            response = requests.get(url_open_meteo, headers=headers, timeout=8)
+            if response.status_code == 200:
+                data = response.json().get("elevation", [])
+                if data and any(e is not None for e in data):
+                    return [e if e is not None else 10.0 for e in data]
+            elif response.status_code == 429:
+                sleep_time = 1.0 * (attempt + 1)
+                print(f"⚠️ Open-Meteo Rate Limited (429), retrying in {sleep_time}s...")
+                time.sleep(sleep_time)
+        except Exception as e:
+            print(f"Open-Meteo attempt {attempt+1} error: {e}")
+        time.sleep(0.3)
+
+    # -------------------------------------------------------------
+    # 2. ตัวสำรอง (Fallback API): Open-Elevation API
+    # -------------------------------------------------------------
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        print("⚠️ Open-Meteo ขัดข้อง กำลังสลับไปใช้ Open-Elevation API สำรอง...")
+        locations_str = "|".join([f"{lat},{lon}" for lat, lon in zip(lats, lons)])
+        url_fallback = f"https://api.open-elevation.com/api/v1/lookup?locations={locations_str}"
+        
+        response = requests.get(url_fallback, headers=headers, timeout=10)
         if response.status_code == 200:
-            data = response.json().get("elevation", [])
-            if data:
-                return [e if e is not None else 10.0 for e in data]
-        else:
-            # ปริ้นต์เตือนใน Terminal ทันทีถ้า API ล่มหรือโดน Rate Limit
-            print(f"⚠️ Elevation API Error Status: {response.status_code}, Response: {response.text}")
+            results = response.json().get("results", [])
+            if results:
+                elevs = [res.get("elevation") for res in results]
+                if any(e is not None for e in elevs):
+                    return [e if e is not None else 10.0 for e in elevs]
     except Exception as e:
-        print(f"Elevation API Safe Mode Warning: {e}")
-    
-    return [20.0] * len(lats)
+        print(f"⚠️ Fallback API Error: {e}")
+
+    # -------------------------------------------------------------
+    # 3. เซฟตี้สุดท้าย: หากล่มทั้งหมด ป้องกันเว็บพังด้วยค่าสำรองปลอดภัย
+    # -------------------------------------------------------------
+    print("❌ API ทั้งหมดไม่ตอบสนอง ใช้ระบบค่าความสูงสำรองฉุกเฉิน")
+    return [30.0] * len(lats)
 
 def get_elevation_data(coords):
     """ดึงข้อมูลความสูงแบบเพิ่มความหนาแน่น (High-Density Grid & Boundary Sampling) แม่นยำสูง"""
@@ -108,7 +137,6 @@ def get_elevation_data(coords):
             
         minx, miny, maxx, maxy = poly.bounds
         
-        # เพิ่มความละเอียดกริดภายในเป็น 20x20 จุด (คำนวณแม่นยำสูงขึ้น)
         span_x = maxx - minx
         span_y = maxy - miny
         step_x = span_x / 20.0
@@ -122,7 +150,6 @@ def get_elevation_data(coords):
         grid_lats = []
         grid_lons = []
         
-        # 1. เก็บจุดกริดภายใน Polygon
         for lat in lats:
             for lon in lons:
                 pt = Point(lon, lat)
@@ -130,7 +157,6 @@ def get_elevation_data(coords):
                     grid_lats.append(round(lat, 5))
                     grid_lons.append(round(lon, 5))
         
-        # 2. เพิ่มจุดมุม (Vertices) และจุดกึ่งกลางขอบแปลง เพื่อความชัวร์ไม่พลาดจุดพีคที่ขอบ
         for i in range(len(coords)):
             p1 = coords[i]
             p2 = coords[(i + 1) % len(coords)]
@@ -142,7 +168,6 @@ def get_elevation_data(coords):
             grid_lats.append(round(mid_lat, 5))
             grid_lons.append(round(mid_lon, 5))
             
-        # ตัดจุดพิกัดที่ซ้ำกันออกเพื่อประหยัดโควต้า
         seen = set()
         unique_lats = []
         unique_lons = []
@@ -152,7 +177,6 @@ def get_elevation_data(coords):
                 unique_lats.append(lat)
                 unique_lons.append(lon)
 
-        # แบ่งส่งเป็นชุดๆ (Chunk ละไม่เกิน 80 จุด) ป้องกัน URL ยาวเกินขีดจำกัดของ API
         max_chunk = 80
         all_elevations = []
         
@@ -162,7 +186,7 @@ def get_elevation_data(coords):
             elevs = fetch_elevation_safe(chunk_lats, chunk_lons)
             if elevs:
                 all_elevations.extend([e for e in elevs if e is not None])
-            time.sleep(0.2)  # 🚀 หน่วงเวลา 0.2 วินาทีต่อ Chunk ป้องกันโดนบล็อก Rate Limit (HTTP 429)
+            time.sleep(0.2)
         
         if all_elevations:
             return {
@@ -297,7 +321,6 @@ def calculate_uav():
     coords = data.get('coordinates', [])
     buffer_meters = float(data.get('buffer_meters', 50))
     
-    # 📌 รับค่า Cache elevation จาก frontend (กรณีเปลี่ยนแค่ buffer แต่แปลงไม่ขยับ)
     cached_min = data.get('cached_min_elevation')
     cached_max = data.get('cached_max_elevation')
     
@@ -322,7 +345,6 @@ def calculate_uav():
 
     location_name = get_local_location(centroid_lon, centroid_lat)
     
-    # 🚀 ถ้ามี Cache ส่งมา แปลงเดิมเป๊ะ จะดึงค่าเดิมทันทีโดยไม่ต้องยิง API ใหม่
     if cached_min is not None and cached_max is not None:
         elevation_data = {
             "min_elevation": cached_min,
