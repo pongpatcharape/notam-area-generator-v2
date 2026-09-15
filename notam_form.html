@@ -8,13 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    <!-- 🌟 แก้ไขที่ 1: ดึงฟอนต์ Sarabun จาก Google Fonts เพื่อให้ iPad/Mac แสดงผลฟอนต์ได้ถูกต้อง 100% -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         body {
             background-color: #222;
-            font-family: 'Sarabun', sans-serif; /* เปลี่ยนมาใช้ฟอนต์เว็บ */
+            font-family: 'Sarabun', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -23,7 +22,6 @@
             overflow-x: hidden;
         }
 
-        /* 🌟 แก้ไขที่ 2: กล่องสำหรับรองรับการ Scroll บน iPad ไม่ให้เละ */
         .outer-container {
             width: 100%;
             max-width: 100vw;
@@ -33,16 +31,14 @@
             padding: 20px;
         }
 
-        /* ล็อกขนาดตามพิกเซลจริงของภาพเป๊ะๆ (2484 x 3511) */
+        /* 🌟 เปลี่ยนมาใช้ zoom แทน transform: scale เพื่อแก้ปัญหาบน Safari / iPad */
         .wrapper {
             width: 2484px;
             height: 3511px;
             position: relative;
             background-color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            transform: scale(0.32); /* ย่อแสดงผลบนหน้าจอให้ดูง่าย */
-            transform-origin: top center;
-            margin-bottom: -2387px; /* 3511 - (3511 * 0.32) = 2387.48 */
+            zoom: 0.31; /* ย่อขนาดให้พอดีจอ iPad / PC โดยที่ input ไม่หลุดตำแหน่ง */
         }
 
         .bg-template {
@@ -52,17 +48,16 @@
             width: 100%;
             height: 100%;
             z-index: 0;
-            pointer-events: none; /* ป้องกันการเผลอลากรูปเล่น */
+            pointer-events: none;
         }
 
-        /* ช่องกรอกข้อความ */
         .input-box {
             position: absolute;
-            background: rgba(255, 0, 0, 0.15); /* ลดความเข้มสีแดงลงหน่อยจะได้มองเห็นตัวหนังสือชัดขึ้น */
+            background: rgba(255, 0, 0, 0.15);
             border: none;
             outline: none;
             font-family: 'Sarabun', sans-serif;
-            font-size: 58px; /* ปรับขนาดขึ้นเล็กน้อยชดเชยกับ Base ของ Google Font */
+            font-size: 58px;
             color: #000000;
             text-align: center;
             padding: 0;
@@ -75,7 +70,6 @@
             text-align: left;
         }
 
-        /* ช่อง Checkbox */
         .check-box {
             position: absolute;
             width: 45px;
@@ -105,7 +99,7 @@
         @media print {
             body { background: transparent; padding: 0; margin: 0; overflow: visible; }
             .outer-container { overflow: visible; padding: 0; display: block; }
-            .wrapper { transform: none; margin-bottom: 0; box-shadow: none; }
+            .wrapper { zoom: 1; box-shadow: none; }
             #control-panel { display: none !important; }
             .input-box, .check-box { background: transparent !important; }
         }
@@ -124,7 +118,6 @@
         </button>
     </div>
 
-    <!-- 🌟 เพิ่ม container ครอบ wrapper เพื่อจัดการ Scrollbar -->
     <div class="outer-container">
         <div id="pdf-content" class="wrapper">
             
@@ -188,7 +181,6 @@
     </div>
 
     <script>
-        // รับค่าพารามิเตอร์จาก URL ที่ส่งมาจากหน้าแผนที่หลัก
         const params = new URLSearchParams(window.location.search);
 
         const sDay = params.get('s_day') || '';
@@ -207,7 +199,6 @@
         const latVal = params.get('lat') || '';
         const lngVal = params.get('lng') || '';
 
-        // รับค่ารายละเอียดพื้นที่และพิกัด Buffer สำหรับ Section 12
         const det1 = params.get('det1') || '';
         const det2 = params.get('det2') || '';
 
@@ -322,7 +313,6 @@
 
         function generatePDF() {
             const inputs = document.querySelectorAll('.input-box, .check-box');
-            // ซ่อนสีพื้นหลังแดงก่อน Gen PDF
             inputs.forEach(el => el.style.background = 'transparent');
 
             const element = document.getElementById('pdf-content');
@@ -330,14 +320,13 @@
             const opt = {
                 margin:       0,
                 filename:     'NOTAM_Request_Form.pdf',
-                image:        { type: 'jpeg', quality: 1 }, // เปลี่ยน jpg เป็น jpeg ตามมาตรฐาน html2pdf
+                image:        { type: 'jpeg', quality: 1 },
                 html2canvas:  { scale: 1, useCORS: true, scrollY: 0 },
                 jsPDF:        { unit: 'px', format: [2484, 3511], orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(element).save()
             .then(() => {
-                // คืนค่าสีพื้นหลังหลัง Gen เสร็จ
                 inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.15)');
             })
             .catch(err => {
