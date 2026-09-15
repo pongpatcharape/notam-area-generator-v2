@@ -8,20 +8,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    <style>
-        @font-face {
-            font-family: 'TH Sarabun New';
-            src: local('TH Sarabun New'), local('THSarabunNew');
-        }
+    <!-- 🌟 แก้ไขที่ 1: ดึงฟอนต์ Sarabun จาก Google Fonts เพื่อให้ iPad/Mac แสดงผลฟอนต์ได้ถูกต้อง 100% -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <style>
         body {
             background-color: #222;
-            font-family: 'TH Sarabun New', sans-serif;
+            font-family: 'Sarabun', sans-serif; /* เปลี่ยนมาใช้ฟอนต์เว็บ */
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
             padding: 20px 0;
+            overflow-x: hidden;
+        }
+
+        /* 🌟 แก้ไขที่ 2: กล่องสำหรับรองรับการ Scroll บน iPad ไม่ให้เละ */
+        .outer-container {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
         }
 
         /* ล็อกขนาดตามพิกเซลจริงของภาพเป๊ะๆ (2484 x 3511) */
@@ -33,7 +42,7 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             transform: scale(0.32); /* ย่อแสดงผลบนหน้าจอให้ดูง่าย */
             transform-origin: top center;
-            margin-bottom: -2380px; /* ดึงพื้นที่ว่างจากการย่อสเกล */
+            margin-bottom: -2387px; /* 3511 - (3511 * 0.32) = 2387.48 */
         }
 
         .bg-template {
@@ -43,17 +52,18 @@
             width: 100%;
             height: 100%;
             z-index: 0;
+            pointer-events: none; /* ป้องกันการเผลอลากรูปเล่น */
         }
 
-        /* ช่องกรอกข้อความอ้างอิงพิกเซลตรงตามที่มาร์ค (ปรับสีตัวหนังสือเป็นสีดำ) */
+        /* ช่องกรอกข้อความ */
         .input-box {
             position: absolute;
-            background: rgba(255, 0, 0, 0.25); /* สีแดงอ่อนช่วยเช็กตำแหน่ง */
+            background: rgba(255, 0, 0, 0.15); /* ลดความเข้มสีแดงลงหน่อยจะได้มองเห็นตัวหนังสือชัดขึ้น */
             border: none;
             outline: none;
-            font-family: 'TH Sarabun New', sans-serif;
-            font-size: 55px; /* สัดส่วนฟอนต์รับกับภาพความละเอียดสูง 300 DPI */
-            color: #000000; /* เปลี่ยนเป็นสีดำตามต้องการ */
+            font-family: 'Sarabun', sans-serif;
+            font-size: 58px; /* ปรับขนาดขึ้นเล็กน้อยชดเชยกับ Base ของ Google Font */
+            color: #000000;
             text-align: center;
             padding: 0;
             margin: 0;
@@ -72,7 +82,7 @@
             height: 45px;
             cursor: pointer;
             appearance: none;
-            background: rgba(255, 0, 0, 0.35);
+            background: rgba(255, 0, 0, 0.25);
             z-index: 10;
         }
         
@@ -82,7 +92,7 @@
             top: -12px;
             left: 4px;
             font-size: 55px;
-            color: #000000; /* เปลี่ยนเครื่องหมายถูกเป็นสีดำ */
+            color: #000000;
             font-weight: bold;
         }
 
@@ -93,7 +103,8 @@
         }
 
         @media print {
-            body { background: transparent; padding: 0; margin: 0; }
+            body { background: transparent; padding: 0; margin: 0; overflow: visible; }
+            .outer-container { overflow: visible; padding: 0; display: block; }
             .wrapper { transform: none; margin-bottom: 0; box-shadow: none; }
             #control-panel { display: none !important; }
             .input-box, .check-box { background: transparent !important; }
@@ -102,70 +113,78 @@
 </head>
 <body>
 
-    <div id="control-panel" class="bg-gray-900 text-white p-4 rounded-xl mb-4 flex justify-between items-center shadow-2xl gap-4">
-        <span class="text-[16px]"></span>
-        <button onclick="generatePDF()" class="bg-blue-600 hover:bg-red-500 px-6 py-2 rounded-lg font-bold transition text-[18px]">
-            📥 SAVE PDF
+    <div id="control-panel" class="bg-gray-900 text-white p-4 rounded-xl mb-4 flex justify-between items-center shadow-2xl gap-4 border border-gray-700">
+        <span class="text-[16px] font-semibold tracking-wide text-gray-300">CAAT NOTAM FORM</span>
+        <button onclick="generatePDF()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-lg font-bold transition text-[18px] shadow-lg flex items-center gap-2 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+            </svg>
+            SAVE PDF
         </button>
     </div>
 
-    <div id="pdf-content" class="wrapper">
-        
-        <img src="f1751a44.jpg" alt="Form Background" class="bg-template">
-        
-        <input type="text" id="topDay" class="input-box" style="left: 1130px; top: 402px; width: 100px;"> 
-        <input type="text" id="topMonth" class="input-box" style="left: 1320px; top: 402px; width: 220px;"> 
-        <input type="text" id="topYear" class="input-box" style="left: 1645px; top: 402px; width: 150px;"> 
-        <input type="text" id="topTime" class="input-box" style="left: 1895px; top: 402px; width: 150px;"> 
-        <input type="checkbox" class="check-box" style="left: 461px; top: 560px;">
-        <input type="checkbox" class="check-box" style="left: 461px; top: 779px;">
+    <!-- 🌟 เพิ่ม container ครอบ wrapper เพื่อจัดการ Scrollbar -->
+    <div class="outer-container">
+        <div id="pdf-content" class="wrapper">
+            
+            <img src="f1751a44.jpg" alt="Form Background" class="bg-template">
+            
+            <input type="text" id="topDay" class="input-box" style="left: 1130px; top: 402px; width: 100px;"> 
+            <input type="text" id="topMonth" class="input-box" style="left: 1320px; top: 402px; width: 220px;"> 
+            <input type="text" id="topYear" class="input-box" style="left: 1645px; top: 402px; width: 150px;"> 
+            <input type="text" id="topTime" class="input-box" style="left: 1895px; top: 402px; width: 150px;"> 
+            
+            <input type="checkbox" class="check-box" style="left: 461px; top: 560px;">
+            <input type="checkbox" class="check-box" style="left: 461px; top: 779px;">
 
-        <input type="checkbox" class="check-box" style="left: 1059px; top: 1089px;" checked>
-        <input type="text" class="input-box input-left" style="left: 1450px; top: 1080px; width: 650px;" value="กรมแผนที่ทหาร">
+            <input type="checkbox" class="check-box" style="left: 1059px; top: 1089px;" checked>
+            <input type="text" class="input-box input-left" style="left: 1450px; top: 1080px; width: 650px;" value="กรมแผนที่ทหาร">
 
-        <input type="checkbox" class="check-box" style="left: 1060px; top: 1178px;">
-        <input type="checkbox" class="check-box" style="left: 1060px; top: 1243px;">
-        <input type="checkbox" class="check-box" style="left: 1060px; top: 1370px;">
+            <input type="checkbox" class="check-box" style="left: 1060px; top: 1178px;">
+            <input type="checkbox" class="check-box" style="left: 1060px; top: 1243px;">
+            <input type="checkbox" class="check-box" style="left: 1060px; top: 1370px;">
 
-        <input type="text" class="input-box input-left" style="left: 715px; top: 1508px; width: 1350px;" value="บินสำรวจและถ่ายภาพทางอากาศ (UAV)">
+            <input type="text" class="input-box input-left" style="left: 715px; top: 1508px; width: 1350px;" value="บินสำรวจและถ่ายภาพทางอากาศ (UAV)">
 
-        <input type="text" id="locationInput1" class="input-box input-left" style="left: 1105px; top: 1720px; width: 1000px;">
-        <input type="text" id="locationInput2" class="input-box input-left" style="left: 1105px; top: 1787px; width: 1000px;" value="และพื้นที่ใกล้เคียง">
+            <input type="text" id="locationInput1" class="input-box input-left" style="left: 1105px; top: 1720px; width: 1000px;">
+            <input type="text" id="locationInput2" class="input-box input-left" style="left: 1105px; top: 1787px; width: 1000px;" value="และพื้นที่ใกล้เคียง">
 
-        <input type="text" id="latInput" class="input-box" style="left: 750px; top: 1877px; width: 450px;">
-        <input type="text" id="lngInput" class="input-box" style="left: 1595px; top: 1877px; width: 450px;">
+            <input type="text" id="latInput" class="input-box" style="left: 750px; top: 1877px; width: 450px;">
+            <input type="text" id="lngInput" class="input-box" style="left: 1595px; top: 1877px; width: 450px;">
 
-        <input type="text" class="input-box" style="left: 535px; top: 2037px; width: 350px;" value="50 - 1500">
-        <input type="text" class="input-box" style="left: 1440px; top: 2037px; width: 300px;">
+            <input type="text" class="input-box" style="left: 535px; top: 2037px; width: 350px;" value="50 - 1500">
+            <input type="text" class="input-box" style="left: 1440px; top: 2037px; width: 300px;">
 
-        <input type="text" id="sDay" class="input-box" style="left: 970px; top: 2124px; width: 100px;"> 
-        <input type="text" id="sMonth" class="input-box" style="left: 1205px; top: 2124px; width: 250px;"> 
-        <input type="text" id="sYear" class="input-box" style="left: 1550px; top: 2124px; width: 180px;"> 
-        <input type="text" id="sTime" class="input-box" style="left: 1930px; top: 2124px; width: 150px;"> 
-        <input type="text" id="eDay" class="input-box" style="left: 970px; top: 2190px; width: 100px;"> 
-        <input type="text" id="eMonth" class="input-box" style="left: 1205px; top: 2190px; width: 250px;"> 
-        <input type="text" id="eYear" class="input-box" style="left: 1550px; top: 2190px; width: 180px;"> 
-        <input type="text" id="eTime" class="input-box" style="left: 1930px; top: 2190px; width: 150px;"> 
-        <input type="text" class="input-box input-left" style="left: 1250px; top: 2259px; width: 850px;" value="DAILY">
+            <input type="text" id="sDay" class="input-box" style="left: 970px; top: 2124px; width: 100px;"> 
+            <input type="text" id="sMonth" class="input-box" style="left: 1205px; top: 2124px; width: 250px;"> 
+            <input type="text" id="sYear" class="input-box" style="left: 1550px; top: 2124px; width: 180px;"> 
+            <input type="text" id="sTime" class="input-box" style="left: 1930px; top: 2124px; width: 150px;"> 
+            <input type="text" id="eDay" class="input-box" style="left: 970px; top: 2190px; width: 100px;"> 
+            <input type="text" id="eMonth" class="input-box" style="left: 1205px; top: 2190px; width: 250px;"> 
+            <input type="text" id="eYear" class="input-box" style="left: 1550px; top: 2190px; width: 180px;"> 
+            <input type="text" id="eTime" class="input-box" style="left: 1930px; top: 2190px; width: 150px;"> 
+            <input type="text" class="input-box input-left" style="left: 1250px; top: 2259px; width: 850px;" value="DAILY">
 
-        <input type="text" id="coordName" class="input-box input-left" style="left: 750px; top: 2341px; width: 650px;"> 
-        <input type="text" id="num" class="input-box input-left" style="left: 1530px; top: 2341px; width: 450px;"> 
-        <input type="text" id="coordPosition" class="input-box input-left" style="left: 750px; top: 2411px; width: 650px;"> 
-        <input type="text" class="input-box input-left" style="left: 1615px; top: 2411px; width: 380px;" value="กรมแผนที่ทหาร"> 
-        <input type="checkbox" class="check-box" style="left: 300px; top: 2500px;">
+            <input type="text" id="coordName" class="input-box input-left" style="left: 750px; top: 2341px; width: 650px;"> 
+            <input type="text" id="num" class="input-box input-left" style="left: 1530px; top: 2341px; width: 450px;"> 
+            <input type="text" id="coordPosition" class="input-box input-left" style="left: 750px; top: 2411px; width: 650px;"> 
+            <input type="text" class="input-box input-left" style="left: 1615px; top: 2411px; width: 380px;" value="กรมแผนที่ทหาร"> 
+            <input type="checkbox" class="check-box" style="left: 300px; top: 2500px;">
 
-        <input type="text" id="emergName" class="input-box input-left" style="left: 750px; top: 2592px; width: 650px;"> 
-        <input type="text" id="emergPhone" class="input-box input-left" style="left: 1520px; top: 2592px; width: 450px;"> 
+            <input type="text" id="emergName" class="input-box input-left" style="left: 750px; top: 2592px; width: 650px;"> 
+            <input type="text" id="emergPhone" class="input-box input-left" style="left: 1520px; top: 2592px; width: 450px;"> 
 
-        <!-- Section 12: รายละเอียดเพิ่มเติม -->
-        <input type="text" id="detailLine1" class="input-box input-left" style="left: 700px; top: 2684px; width: 1350px;">
-        <input type="text" id="detailLine2" class="input-box input-left" style="left: 400px; top: 2750px; width: 1650px;">
-        <input type="text" id="detailLine3" class="input-box input-left" style="left: 400px; top: 2815px; width: 1650px;">
+            <!-- Section 12: รายละเอียดเพิ่มเติม -->
+            <input type="text" id="detailLine1" class="input-box input-left" style="left: 700px; top: 2684px; width: 1350px;">
+            <input type="text" id="detailLine2" class="input-box input-left" style="left: 400px; top: 2750px; width: 1650px;">
+            <input type="text" id="detailLine3" class="input-box input-left" style="left: 400px; top: 2815px; width: 1650px;">
 
-        <input type="text" id="signName" class="input-box input-left" style="left: 1572px; top: 2957px; width: 500px;"> 
-        <input type="text" id="signFullName" class="input-box" style="left: 1550px; top: 3024px; width: 500px;">         
-        <input type="text" id="signPosition" class="input-box input-left" style="left: 1577px; top: 3092px; width: 380px;"> 
-        <input type="text" id="signPhone" class="input-box input-left" style="left: 1630px; top: 3158px; width: 380px;"> 
+            <input type="text" id="signName" class="input-box input-left" style="left: 1572px; top: 2957px; width: 500px;"> 
+            <input type="text" id="signFullName" class="input-box" style="left: 1550px; top: 3024px; width: 500px;">         
+            <input type="text" id="signPosition" class="input-box input-left" style="left: 1577px; top: 3092px; width: 380px;"> 
+            <input type="text" id="signPhone" class="input-box input-left" style="left: 1630px; top: 3158px; width: 380px;"> 
+        </div>
     </div>
 
     <script>
@@ -192,42 +211,32 @@
         const det1 = params.get('det1') || '';
         const det2 = params.get('det2') || '';
 
-        // หยอดรายละเอียดพื้นที่ลงบรรทัดที่ 1
         if (det1) document.getElementById('detailLine1').value = det1;
 
-     // จัดการพิกัด Buffer ลงบรรทัดที่ 2 และ 3 โดยแบ่งตามจำนวนจุดพิกัด
         if (det2) {
             const tabSpace = '\u2003\u2003'; 
-            // แยกชุดพิกัดทั้งหมดออกจากกันด้วยตัวคั่น Em Space ที่เราส่งมา
             const pointsArray = det2.split(tabSpace);
-            
-            // กำหนดให้บรรทัดที่ 2 แสดงพิกัด 3 จุดแรก (ถ้าอยากให้บรรทัดบนแสดงกี่จุดปรับเลขตรงนี้ได้ครับ)
             const pointsPerLine = 3; 
             const line2Points = pointsArray.slice(0, pointsPerLine);
             const line3Points = pointsArray.slice(pointsPerLine);
             
-            // หยอดลงช่องบรรทัดที่ 2 และ 3 แบบเต็มพิกัด ไม่โดนตัดกลางคันแน่นอน
             document.getElementById('detailLine2').value = line2Points.join(tabSpace);
             document.getElementById('detailLine3').value = line3Points.join(tabSpace);
         }
 
-        // หยอดพิกัดศูนย์กลางลงในช่องข้อ 6
         if(latVal) document.getElementById('latInput').value = latVal;
         if(lngVal) document.getElementById('lngInput').value = lngVal;
 
-        // หยอดข้อมูลลงในช่องฟอร์ม (Section 9: วันเวลาเริ่มต้น)
         if(sDay) document.getElementById('sDay').value = sDay;
         if(sMonth) document.getElementById('sMonth').value = sMonth;
         if(sYear) document.getElementById('sYear').value = sYear;
         if(sTime) document.getElementById('sTime').value = sTime;
 
-        // หยอดข้อมูลลงในช่องฟอร์ม (Section 9: วันเวลาสิ้นสุด)
         if(eDay) document.getElementById('eDay').value = eDay;
         if(eMonth) document.getElementById('eMonth').value = eMonth;
         if(eYear) document.getElementById('eYear').value = eYear;
         if(eTime) document.getElementById('eTime').value = eTime;
 
-        // หยอดวันที่ปัจจุบันลงส่วนหัวเอกสาร (ช่องวันที่กรอก)
         const today = new Date();
         document.getElementById('topDay').value = today.getDate();
         const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -235,19 +244,16 @@
         document.getElementById('topYear').value = today.getFullYear() + 543;
         document.getElementById('topTime').value = String(today.getHours()).padStart(2, '0') + ':' + String(today.getMinutes()).padStart(2, '0');
 
-        // สถานที่ปฏิบัติงาน
         if(locationVal) {
             document.getElementById('locationInput1').value = locationVal;
         }
 
-        // โหลดข้อมูลจาก personnel.json เพื่อดึงข้อมูลผู้ประสานงานและผู้ติดต่อฉุกเฉิน
         async function loadPersonnelDetails() {
             try {
                 const res = await fetch('personnel.json');
                 if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
                 const personnelList = await res.json();
 
-                // 1. ค้นหาข้อมูลผู้ประสานงาน
                 const coordinatorPerson = personnelList.find(p => {
                     const displayName = p.name || `${p.rank || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim();
                     return displayName === coordinatorRaw || p.name === coordinatorRaw;
@@ -266,7 +272,6 @@
                         document.getElementById('num').value = coordinatorPerson.num;
                         document.getElementById('signPhone').value = coordinatorPerson.num;
                     }
-                    // ชื่อตัวบรรจงท้ายฟอร์ม (ดึงจาก name2)
                     if (coordinatorPerson.name2) {
                         document.getElementById('signFullName').value = coordinatorPerson.name2;
                     } else if (coordinatorPerson.name) {
@@ -278,7 +283,6 @@
                     document.getElementById('signFullName').value = coordinatorRaw;
                 }
 
-                // 2. ค้นหาข้อมูลผู้ติดต่อฉุกเฉิน
                 const emergencyPerson = personnelList.find(p => {
                     const displayName = p.name || `${p.rank || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim();
                     return displayName === emergencyRaw || p.name === emergencyRaw;
@@ -318,6 +322,7 @@
 
         function generatePDF() {
             const inputs = document.querySelectorAll('.input-box, .check-box');
+            // ซ่อนสีพื้นหลังแดงก่อน Gen PDF
             inputs.forEach(el => el.style.background = 'transparent');
 
             const element = document.getElementById('pdf-content');
@@ -325,20 +330,20 @@
             const opt = {
                 margin:       0,
                 filename:     'NOTAM_Request_Form.pdf',
-                image:        { type: 'jpg', quality: 1 },
+                image:        { type: 'jpeg', quality: 1 }, // เปลี่ยน jpg เป็น jpeg ตามมาตรฐาน html2pdf
                 html2canvas:  { scale: 1, useCORS: true, scrollY: 0 },
                 jsPDF:        { unit: 'px', format: [2484, 3511], orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(element).save()
             .then(() => {
-                inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.25)');
+                // คืนค่าสีพื้นหลังหลัง Gen เสร็จ
+                inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.15)');
             })
             .catch(err => {
                 console.error(err);
-                // ข้ามการแจ้งเตือน alert และเปิดหน้าพิมพ์ทันทีตามที่ต้องการ
                 window.print();
-                inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.25)');
+                inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.15)');
             });
         }
     </script>
