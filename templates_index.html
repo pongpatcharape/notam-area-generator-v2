@@ -28,9 +28,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
 
 <!-- ดึง Leaflet และ Windy API Library -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
-<script src="https://unpkg.com/windy-javascript-api/libBoot.js"></script>
+<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 <script id="tailwind-config">
     tailwind.config = {
         darkMode: "class",
@@ -1941,12 +1940,11 @@ async function loadUavElevationAnalysis() {
     let isWindyInitialized = false;
     let windyStoreRef = null;
 
-    // ฟังก์ชันเปิด Modal Radar
+    // 1. ฟังก์ชันเปิด Modal Radar
     function openWeatherRadar() {
         const modal = document.getElementById('windyModal');
         if (modal) modal.classList.remove('hidden');
 
-        // แปลงพิกัด uavPoint สำหรับวาด Polygon
         let coords = [];
         if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
             coords = uavPoint.map(p => {
@@ -1966,7 +1964,7 @@ async function loadUavElevationAnalysis() {
         }, 300);
     }
 
-    // ฟังก์ชันเริ่มต้นแผนที่ Windy
+    // 2. ฟังก์ชันเริ่มต้นแผนที่ Windy
     function initWindyMap(coords) {
         if (typeof windyInit !== 'function') {
             console.error('Windy API (libBoot.js) ยังไม่ได้ถูกดึงเข้ามาใน <head>');
@@ -1977,11 +1975,11 @@ async function loadUavElevationAnalysis() {
         const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
 
         const options = {
-            key: WINDY_API_KEY, // แก้ใช้ตัวแปรที่ประกาศไว้ข้างบน
+            key: WINDY_API_KEY,
             lat: defaultLat,
             lon: defaultLng,
             zoom: 8,
-            overlay: 'rain' // ใช้ 'rain', 'wind', 'temp', 'clouds'
+            overlay: 'rain'
         };
 
         windyInit(options, windyAPI => {
@@ -1990,16 +1988,14 @@ async function loadUavElevationAnalysis() {
             windyStoreRef = store;
             isWindyInitialized = true;
 
-            // วาด Polygon ทับลงบนแผนที่ Windy
             renderWorkAreaOnWindy(coords);
         });
     }
 
-    // ฟังก์ชันวาดพื้นที่การทำงาน Polygon
+    // 3. ฟังก์ชันวาด Polygon พื้นที่การทำงาน
     function renderWorkAreaOnWindy(coords) {
         if (!windyMapInstance) return;
 
-        // ลบ Layer เดิมถ้ามี
         if (windyPolygonLayer) {
             windyMapInstance.removeLayer(windyPolygonLayer);
             windyPolygonLayer = null;
@@ -2007,28 +2003,27 @@ async function loadUavElevationAnalysis() {
 
         if (coords && coords.length >= 3 && typeof L !== 'undefined') {
             windyPolygonLayer = L.polygon(coords, {
-                color: '#FFD700',       // ขอบสีทอง
+                color: '#FFD700',
                 weight: 3,
-                fillColor: '#FF9900',   
+                fillColor: '#FF9900',
                 fillOpacity: 0.4,
                 dashArray: '6, 6'
             }).addTo(windyMapInstance);
 
-            // ขยับซูมแผนที่ให้อยู่ในขอบเขต Polygon
             if (windyPolygonLayer.getBounds().isValid()) {
                 windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
             }
         }
     }
 
-    // ฟังก์ชันเปลี่ยน Layer ลม/ฝน/อุณหภูมิ ด้วยปุ่ม
+    // 4. ฟังก์ชันเปลี่ยน Layer (ฝน/ลม/อุณหภูมิ/เมฆ)
     function changeWindyLayer(layerName) {
         if (windyStoreRef) {
             windyStoreRef.set('overlay', layerName);
         }
     }
 
-    // ฟังก์ชันปิด Modal (แยกออกมาถูกต้องแล้ว)
+    // 5. ฟังก์ชันปิด Modal (ปุ่ม ✕)
     function closeWindyModal() {
         const modal = document.getElementById('windyModal');
         if (modal) {
