@@ -515,14 +515,12 @@
                     <span class="material-symbols-outlined text-base">close</span>
                 </button>
             </div>
-            <div class="flex-1 w-full h-full relative">
-                <div id="windy" class="w-full h-full"></div>
-                <div class="absolute top-3 right-3 z-[9999] flex gap-1.5 bg-[#1E222A]/90 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md shadow-xl">
-                    <button type="button" onclick="setWindyLayer('radar')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Radar</button>
-                    <button type="button" onclick="setWindyLayer('wind')" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Wind</button>
-                    <button type="button" onclick="setWindyLayer('rain')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Rain</button>
-                    <button type="button" onclick="setWindyLayer('temp')" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Temp</button>
-                </div>
+          	 <div class="absolute top-4 right-4 z-[1000] flex gap-2 bg-slate-900/80 p-1.5 rounded-lg border border-slate-700">
+    		<button onclick="changeWindyLayer('rain')" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded">Rain</button>
+    		<button onclick="changeWindyLayer('wind')" class="px-3 py-1 bg-teal-600 hover:bg-teal-500 text-white text-xs rounded">Wind</button>
+   		<button onclick="changeWindyLayer('temp')" class="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white text-xs rounded">Temp</button>
+    		<button onclick="changeWindyLayer('clouds')" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded">Clouds</button>
+		</div>
             </div>
         </div>
     </div>
