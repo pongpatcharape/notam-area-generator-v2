@@ -11,8 +11,10 @@
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 
-<!-- Leaflet CSS -->
+<!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <!-- Tom Select CSS -->
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 <!-- Flatpickr CSS (Dark Theme) -->
@@ -24,6 +26,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+
+<!-- ดึง Leaflet และ Windy API Library -->
+<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script id="tailwind-config">
     tailwind.config = {
@@ -84,10 +90,10 @@
             <span class="text-xl font-bold text-primary">AERIAL SURVEY CONTROL</span>
         </div>
         <div class="flex items-center gap-4">
-            <button id="btn-toggle-radar" onclick="toggleWeatherRadar()" class="bg-[#111827] hover:bg-gray-800 border border-outline-variant text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-on-surface-variant">
-                <span class="material-symbols-outlined text-[18px] text-blue-400">radar</span>
-                <span>WEATHER RADAR</span>
-            </button>
+<button type="button" onclick="openWeatherRadar()" id="btn-toggle-radar" class="bg-[#111827] hover:bg-gray-800 border border-outline-variant text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-on-surface-variant cursor-pointer">
+    <span class="material-symbols-outlined text-[18px] text-blue-400">radar</span>
+    <span>WEATHER RADAR</span>
+</button>
             <button class="hover:text-primary transition-colors p-2 rounded-full"><span class="material-symbols-outlined">account_circle</span></button>
         </div>
     </div>
@@ -246,23 +252,6 @@
                     </button>
                 </section>
 
-                <!-- ⛰️ ELEVATION DISPLAY -->
-                <div id="uav-elevation-info" class="hidden bg-[#1E222A] border border-gray-700 rounded-lg p-3 flex flex-col gap-2">
-                    <h3 class="text-xs font-bold text-gray-300 uppercase flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px] text-blue-400">landscape</span> Terrain Elevation (SRTM)
-                    </h3>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="bg-[#111827] p-2 rounded border border-gray-700 flex flex-col items-center">
-                            <span class="text-gray-400">Min</span>
-                            <span class="font-bold text-blue-400 font-mono"><span id="uav-min-elev">-</span> m.</span>
-                        </div>
-                        <div class="bg-[#111827] p-2 rounded border border-gray-700 flex flex-col items-center">
-                            <span class="text-gray-400">Max</span>
-                            <span class="font-bold text-orange-400 font-mono"><span id="uav-max-elev">-</span> m.</span>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="flex flex-col gap-2 mt-2">
                     <div class="flex gap-2">
                         <button onclick="clearUAVMap()" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-3 rounded-xl flex items-center justify-center transition-all shadow-md" title="ล้างจุดทั้งหมด">
@@ -391,7 +380,7 @@
             </div>
         </div>
 
-        <!-- ⛰️ RIGHT SIDEBAR: LOS PROFILE & ELEVATION GRAPH -->
+<!-- ⛰️ RIGHT SIDEBAR: LOS PROFILE & ELEVATION GRAPH -->
         <div id="losProfileRightSidebar" style="z-index: 99999;" class="translate-x-full fixed right-0 top-16 bottom-0 w-full md:w-[50%] lg:w-[48%] glass-panel border-l border-blue-500/50 shadow-2xl bg-[#1E222A]/98 p-5 flex flex-col gap-3 overflow-hidden">
             <div class="flex justify-between items-center border-b border-outline-variant pb-2 shrink-0">
                 <div class="flex items-center gap-3 flex-wrap">
@@ -430,6 +419,24 @@
                         <label class="text-gray-300 font-medium">Altitude AGL (m)</label>
                         <input id="losDroneAlt" type="number" value="400" class="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-full">
                     </div>
+                </div> 
+
+                <!-- ⛰️ ELEVATION DISPLAY (ปรับเป็นแถวเดียว Compact ช่วยเพิ่มพื้นที่ให้กราฟ) -->
+                <div id="uav-elevation-info" class="hidden bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 flex items-center justify-between text-xs my-0.5">
+                    <h3 class="text-xs font-bold text-gray-300 uppercase flex items-center gap-1.5 shrink-0">
+                        <span class="material-symbols-outlined text-[16px] text-blue-400">landscape</span> Terrain Elevation (SRTM)
+                    </h3>
+                    <div class="flex items-center gap-3 font-mono font-medium">
+                        <div class="flex items-center gap-1">
+                            <span class="text-gray-400">Min</span>
+                            <span class="font-bold text-blue-400 ml-0.5"><span id="uav-min-elev">-</span> m.</span>
+                        </div>
+                        <span class="text-gray-600">|</span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-gray-400">Max</span>
+                            <span class="font-bold text-orange-400 ml-0.5"><span id="uav-max-elev">-</span> m.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex gap-2 pt-1">
@@ -445,8 +452,8 @@
                 </div>
             </div>
 
-            <!-- Canvas สำหรับกราฟ (ใช้ flex-1 ยืดหยุ่นพอดีพื้นที่ ไม่ล้นหน้าจอ) -->
-            <div class="w-full flex-1 min-h-[180px] relative bg-[#111827] rounded-lg p-3 border border-gray-800 flex flex-col">
+            <!-- Canvas สำหรับกราฟ (ขยายความสูงอัตโนมัติด้วย flex-1) -->
+            <div class="w-full flex-1 min-h-[220px] relative bg-[#111827] rounded-lg p-3 border border-gray-800 flex flex-col">
                 <canvas id="losChart" class="w-full h-full"></canvas>
             </div>
 
@@ -492,6 +499,32 @@
         </div>
     </div>
 </div>
+
+<!-- ========================================================= -->
+<!-- 🌤️ WEATHER RADAR MODAL (หน้าต่างป๊อปอัปเรดาร์สภาพอากาศ) -->
+<!-- ========================================================= -->
+<div id="windyModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-3 sm:p-6">
+        <div class="bg-[#1E222A] w-full max-w-6xl h-[88vh] rounded-2xl border border-blue-500/40 shadow-2xl flex flex-col overflow-hidden relative">
+            <div class="flex justify-between items-center px-4 py-3 border-b border-gray-700 bg-[#111827] shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-400 text-xl">radar</span>
+                    <h3 class="font-bold text-white text-sm sm:text-base">Weather Radar & Atmosphere Analysis</h3>
+                </div>
+                <button type="button" onclick="closeWindyModal()" class="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+            </div>
+            <div class="flex-1 w-full h-full relative">
+                <div id="windy" class="w-full h-full"></div>
+                <div class="absolute top-3 right-3 z-[9999] flex gap-1.5 bg-[#1E222A]/90 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md shadow-xl">
+                    <button type="button" onclick="setWindyLayer('radar')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Radar</button>
+                    <button type="button" onclick="setWindyLayer('wind')" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Wind</button>
+                    <button type="button" onclick="setWindyLayer('rain')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Rain</button>
+                    <button type="button" onclick="setWindyLayer('temp')" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer">Temp</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <!-- Leaflet JS Script -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -979,6 +1012,7 @@
         });
 
         setTimeout(() => { if(map) map.invalidateSize(); }, 300);
+	calculateAreaElevation();
     }
 
     function closeLosProfileModal() {
@@ -1096,6 +1130,60 @@
         }
     }
 
+async function calculateAreaElevation() {
+    if (uavPoints.length < 3) return;
+    
+    const currentSignature = JSON.stringify(uavPoints.map(p => [p.lat, p.lng]));
+    
+    // ถ้าเคยดึงมาแล้ว (ตำแหน่งจุดไม่เปลี่ยน) ให้โชว์เลย ไม่ต้องยิงโหลดใหม่
+    if (currentSignature === lastUavPointsSignature && cachedMinElev !== null && cachedMaxElev !== null) {
+        document.getElementById('uav-elevation-info').classList.remove('hidden');
+        document.getElementById('uav-min-elev').textContent = cachedMinElev;
+        document.getElementById('uav-max-elev').textContent = cachedMaxElev;
+        return;
+    }
+
+    const elevInfo = document.getElementById('uav-elevation-info');
+    if (elevInfo) elevInfo.classList.remove('hidden');
+    
+    document.getElementById('uav-min-elev').innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">sync</span>';
+    document.getElementById('uav-max-elev').innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">sync</span>';
+
+    const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
+    const payloadCoords = [...polygonCoords];
+    if (payloadCoords.length > 0) {
+        payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
+    }
+
+    const payload = {
+        coordinates: payloadCoords
+    };
+
+    try {
+        // 🚀 เปลี่ยน URL จาก /api/calculate_uav เป็น /api/get_uav_elevation
+        const res = await fetch('/api/get_uav_elevation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.elevation) {
+            cachedMinElev = data.elevation.min_elevation;
+            cachedMaxElev = data.elevation.max_elevation;
+            document.getElementById('uav-min-elev').textContent = cachedMinElev;
+            document.getElementById('uav-max-elev').textContent = cachedMaxElev;
+            lastUavPointsSignature = currentSignature; // จำไว้ว่าโหลดของรอบนี้ไปแล้ว
+        } else {
+            document.getElementById('uav-min-elev').textContent = "-";
+            document.getElementById('uav-max-elev').textContent = "-";
+        }
+    } catch (err) {
+        console.error("Error calculating elevation:", err);
+        document.getElementById('uav-min-elev').textContent = "Err";
+        document.getElementById('uav-max-elev').textContent = "Err";
+    }
+}
     function renderLosChart(data) {
         const ctx = document.getElementById('losChart').getContext('2d');
         if (losChartInstance) losChartInstance.destroy();
@@ -1341,66 +1429,7 @@
         }
     }
 
-    async function toggleWeatherRadar() {
-        const btn = document.getElementById('btn-toggle-radar');
-        if (!isRadarActive) {
-            try {
-                if (radarLayer) {
-                    map.removeLayer(radarLayer);
-                    radarLayer = null;
-                }
-
-                const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-                const data = await response.json();
-                
-                if (!data.radar || !data.radar.past || data.radar.past.length === 0) {
-                    throw new Error("No radar data available");
-                }
-
-                const latestFrame = data.radar.past[data.radar.past.length - 1];
-                const path = latestFrame.path; 
-
-                radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${path}/256/{z}/{x}/{y}/2/1_1.png`, {
-                    tileSize: 256,
-                    opacity: 0.85, 
-                    zIndex: 10,
-                    attribution: 'Weather data © RainViewer / TMD',
-                    maxNativeZoom: 6,
-                    maxZoom: 11
-                }).addTo(map);
-
-                if (baseMapLayer && map.hasLayer(baseMapLayer)) map.removeLayer(baseMapLayer);
-                if (baseLabelLayer && map.hasLayer(baseLabelLayer)) map.removeLayer(baseLabelLayer);
-                
-                map.setMaxZoom(11);
-                if (map.getZoom() > 11) map.setZoom(11);
-
-                document.getElementById('map').style.backgroundColor = '#0E1117';
-
-                isRadarActive = true;
-                btn.classList.add('bg-blue-600/30', 'border-blue-500', 'text-white');
-            } catch (error) {
-                console.error("Error loading radar:", error);
-                alert("ไม่สามารถดึงข้อมูลเรดาร์อากาศได้ในขณะนี้ครับ");
-            }
-        } else {
-            if (radarLayer) {
-                map.removeLayer(radarLayer);
-                radarLayer = null;
-            }
-            
-            map.setMaxZoom(19);
-
-            if (baseMapLayer && !map.hasLayer(baseMapLayer)) baseMapLayer.addTo(map);
-            if (baseLabelLayer && !map.hasLayer(baseLabelLayer)) baseLabelLayer.addTo(map);
-            
-            document.getElementById('map').style.backgroundColor = '';
-
-            isRadarActive = false;
-            btn.classList.remove('bg-blue-600/30', 'border-blue-500', 'text-white');
-        }
-    }
-
+    
     function saveMissionArchive() {
         const selectedSheets = getSelectedSheets();
         if (!selectedSheets || selectedSheets.length === 0) {
@@ -1602,103 +1631,120 @@
         }
     });
 
-    async function calculateUAVArea() {
-        if (uavPoints.length < 3) {
-            alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML ก่อนครับ!");
-            return;
-        }
-
-        const currentSignature = JSON.stringify(uavPoints.map(p => [p.lat, p.lng]));
-        const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
-        const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
-        const locationName = document.getElementById('uavLocation').value.trim() || '-';
-        
-        const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
-        const payloadCoords = [...polygonCoords];
-        if (payloadCoords.length > 0) {
-            payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
-        }
-
-        const payload = {
-            project_name: projectName,
-            location_name: locationName,
-            coordinates: payloadCoords,
-            buffer_meters: bufferMeters,
-            base_point: savedBasePointData ? savedBasePointData : null
-        };
-
-        const isSamePolygon = (currentSignature === lastUavPointsSignature);
-        if (isSamePolygon && cachedMinElev !== null && cachedMaxElev !== null) {
-            payload.cached_min_elevation = cachedMinElev;
-            payload.cached_max_elevation = cachedMaxElev;
-        }
-
-        const btn = document.querySelector('button[onclick="calculateUAVArea()"]');
-        const originalContent = btn ? btn.innerHTML : '';
-        
-        if (btn) {
-            btn.disabled = true;
-            const loadingText = isSamePolygon ? " " : "Processing...";
-            btn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">sync</span> ${loadingText}`;
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-        }
-
-        try {
-            const res = await fetch('/api/calculate_uav', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
-
-            const data = await res.json();
-            window.lastUavResponse = data;
-
-            lastUavPointsSignature = currentSignature;
-            if (data.elevation) {
-                cachedMinElev = data.elevation.min_elevation;
-                cachedMaxElev = data.elevation.max_elevation;
-                
-                document.getElementById('uav-min-elev').textContent = cachedMinElev;
-                document.getElementById('uav-max-elev').textContent = cachedMaxElev;
-                document.getElementById('uav-elevation-info').classList.remove('hidden');
-                
-                payload.min_elevation = cachedMinElev;
-                payload.max_elevation = cachedMaxElev;
-            }
-
-            if (data.location_name) {
-                document.getElementById('uavLocation').value = data.location_name;
-            }
-
-            if(uavInnerLayer) map.removeLayer(uavInnerLayer);
-            if(uavBufferLayer) map.removeLayer(uavBufferLayer);
-
-            uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
-                color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.01, weight: 2
-            }).addTo(map);
-
-            uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
-                color: '#f97316', fillColor: '#f97316', fillOpacity: 0.04, weight: 3
-            }).addTo(map);
-
-            map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
-
-            document.getElementById('downloadBtnUav').classList.remove('hidden');
-            window.lastUavPayload = payload;
-
-        } catch (err) {
-            alert("เกิดข้อผิดพลาด: " + err.message);
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalContent;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
-            }
-        }
+async function calculateUAVArea() {
+    if (uavPoints.length < 3) {
+        alert("กรุณาจิ้มจุดบนแผนที่อย่างน้อย 3 จุด หรืออัปโหลดไฟล์ KML ก่อนครับ!");
+        return;
     }
 
+    const currentSignature = JSON.stringify(uavPoints.map(p => [p.lat, p.lng]));
+    const bufferMeters = parseFloat(document.getElementById('uavBufferMeters').value || 50);
+    const projectName = document.getElementById('projectNameUav').value.trim().replace(/\s+/g, '_') || 'UAV_PROJECT';
+    const locationName = document.getElementById('uavLocation').value.trim() || '-';
+    
+    const polygonCoords = uavPoints.map(p => [p.lng, p.lat]);
+    const payloadCoords = [...polygonCoords];
+    if (payloadCoords.length > 0) {
+        payloadCoords.push([payloadCoords[0][0], payloadCoords[0][1]]);
+    }
+
+    // payload เหลือแค่ข้อมูลพื้นที่ (ไม่ส่งค่าความสูงแล้ว)
+    const payload = {
+        project_name: projectName,
+        location_name: locationName,
+        coordinates: payloadCoords,
+        buffer_meters: bufferMeters,
+        base_point: savedBasePointData ? savedBasePointData : null
+    };
+
+    const btn = document.querySelector('button[onclick="calculateUAVArea()"]');
+    const originalContent = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">sync</span> Processing...`;
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+    }
+
+    try {
+        const res = await fetch('/api/calculate_uav', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("คำนวณพื้นที่ UAV ไม่สำเร็จ");
+
+        const data = await res.json();
+        window.lastUavResponse = data;
+        lastUavPointsSignature = currentSignature;
+
+        if (data.location_name) {
+            document.getElementById('uavLocation').value = data.location_name;
+        }
+
+        // วาด Polygon บนแผนที่ทันที
+        if(uavInnerLayer) map.removeLayer(uavInnerLayer);
+        if(uavBufferLayer) map.removeLayer(uavBufferLayer);
+
+        uavBufferLayer = L.polygon(data.buffer_coords.map(c => [c[1], c[0]]), {
+            color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.01, weight: 2
+        }).addTo(map);
+
+        uavInnerLayer = L.polygon(data.inner_coords.map(c => [c[1], c[0]]), {
+            color: '#f97316', fillColor: '#f97316', fillOpacity: 0.04, weight: 3
+        }).addTo(map);
+
+        map.fitBounds(uavBufferLayer.getBounds(), { padding: [30, 30] });
+
+        document.getElementById('downloadBtnUav').classList.remove('hidden');
+        window.lastUavPayload = payload;
+
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+    }
+}
+
+async function loadUavElevationAnalysis() {
+    if (!window.lastUavPayload || !window.lastUavPayload.coordinates) {
+        return; // ถ้ายังไม่มีการคำนวณพื้นที่ ให้ข้ามไป
+    }
+
+    // ซ่อน/แสดง UI สถานะการโหลดความสูงในหน้า Analysis
+    const elevInfo = document.getElementById('uav-elevation-info');
+    
+    try {
+        const res = await fetch('/api/get_uav_elevation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                coordinates: window.lastUavPayload.coordinates
+            })
+        });
+
+        if (!res.ok) throw new Error("ไม่สามารถดึงข้อมูลความสูงได้");
+
+        const data = await res.json();
+
+        if (data.elevation) {
+            cachedMinElev = data.elevation.min_elevation;
+            cachedMaxElev = data.elevation.max_elevation;
+            
+            document.getElementById('uav-min-elev').textContent = cachedMinElev;
+            document.getElementById('uav-max-elev').textContent = cachedMaxElev;
+            if (elevInfo) elevInfo.classList.remove('hidden');
+        }
+
+    } catch (err) {
+        console.error("Error loading elevation:", err);
+    }
+}
     async function downloadUavPackage() {
         if (!window.lastUavPayload) {
             alert("กรุณากดคำนวณพื้นที่ UAV ก่อนดาวน์โหลดครับ!");
@@ -1879,6 +1925,95 @@
             alert("ดาวน์โหลดไม่สำเร็จ: " + err.message);
         }
     }
+
 </script>
+
+<script>
+        const WINDY_API_KEY = 'JW2QyzOFH4qAu0aaJEudVFdnW67FM6Ua';
+
+        let windyMapInstance = null;      
+        let windyStoreInstance = null;    
+        let windyPolygonLayer = null;     
+        let isWindyInitialized = false;   
+
+	function openWeatherRadar() {
+    const modal = document.getElementById('windyModal');
+    if (modal) modal.classList.remove('hidden');
+
+    let coords = [];
+    if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
+        coords = uavPoint.map(p => {
+            if (Array.isArray(p)) return p;
+            if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
+            return p;
+        });
+    }
+
+    // หน่วงเวลา 200ms รอให้ Modal ขยายขนาดเต็มที่ก่อนสร้างแผนที่
+    setTimeout(() => {
+        if (!isWindyInitialized) {
+            initWindyMap(coords);
+        } else {
+            renderWorkAreaOnWindy(coords);
+            if (windyMapInstance) {
+                windyMapInstance.invalidateSize();
+            }
+        }
+    }, 200);
+}
+
+        function closeWindyModal() {
+            const modal = document.getElementById('windyModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function initWindyMap(coords) {
+            const defaultLat = (coords && coords.length > 0) ? coords[0][0] : 13.7563;
+            const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
+
+            const options = {
+                key: WINDY_API_KEY,
+                lat: defaultLat,
+                lon: defaultLng,
+                zoom: 9,
+                overlay: 'radar',
+            };
+
+            windyInit(options, (windyAPI) => {
+                const { map, store } = windyAPI;
+                windyMapInstance = map;        
+                windyStoreInstance = store;    
+                isWindyInitialized = true;
+
+                renderWorkAreaOnWindy(coords);
+            });
+        }
+
+        function renderWorkAreaOnWindy(coords) {
+            if (!windyMapInstance) return;
+
+            if (windyPolygonLayer) {
+                windyMapInstance.removeLayer(windyPolygonLayer);
+            }
+
+            if (coords && coords.length >= 3) {
+                windyPolygonLayer = L.polygon(coords, {
+                    color: '#FFD700',       
+                    weight: 3,
+                    fillColor: '#FF9900',   
+                    fillOpacity: 0.35,
+                    dashArray: '6, 6'       
+                }).addTo(windyMapInstance);
+
+                windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        function setWindyLayer(overlay) {
+            if (windyStoreInstance) {
+                windyStoreInstance.set('overlay', overlay);
+            }
+        }
+    </script>
 </body>
 </html>
