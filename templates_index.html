@@ -1936,45 +1936,63 @@ async function loadUavElevationAnalysis() {
 </script>
 
 <script>
-    // ฟังก์ชันเปิด Modal พร้อมหาจุดศูนย์กลางแปลงงานและปักหมุดอัตโนมัติ
     function openWeatherRadar() {
         const modal = document.getElementById('windyModal');
         if (modal) modal.classList.remove('hidden');
 
-        // พิกัดเริ่มต้นสำรองกรณีไม่มีพิกัดแปลง
-        let lat = 13.7563;
-        let lon = 100.5018;
+        let lat = null;
+        let lon = null;
 
-        // คำนวณหาจุดศูนย์กลาง (Centroid) จากพิกัด uavPoint ทั้งหมด
+        // 1. ลองดึงจาก uavPoint ก่อน (ถ้ามี)
         if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
-            let sumLat = 0;
-            let sumLon = 0;
-            let count = 0;
-
+            let sumLat = 0, sumLon = 0, count = 0;
             uavPoint.forEach(pt => {
                 let pLat = Array.isArray(pt) ? pt[0] : (pt.lat !== undefined ? pt.lat : null);
                 let pLon = Array.isArray(pt) ? pt[1] : (pt.lng !== undefined ? pt.lng : null);
                 if (pLat !== null && pLon !== null) {
-                    sumLat += pLat;
-                    sumLon += pLon;
+                    sumLat += Number(pLat);
+                    sumLon += Number(pLon);
                     count++;
                 }
             });
-
             if (count > 0) {
                 lat = sumLat / count;
                 lon = sumLon / count;
             }
         }
 
-        // อัปเดต URL Iframe สั่งปักหมุดสีแดง (marker=true) ตรงกลางแปลงงาน
+        // 2. ถ้าดึงจาก uavPoint ไม่ได้ ให้ดึงจากขอบเขตแผนที่ Leaflet หลักที่เปิดอยู่อัตโนมัติ (map / drawnItems)
+        if (!lat || !lon) {
+            try {
+                if (typeof drawnItems !== 'undefined' && drawnItems.getBounds && drawnItems.getLayers().length > 0) {
+                    const center = drawnItems.getBounds().getCenter();
+                    lat = center.lat;
+                    lon = center.lng;
+                } else if (typeof map !== 'undefined' && map.getCenter) {
+                    const center = map.getCenter();
+                    lat = center.lat;
+                    lon = center.lng;
+                }
+            } catch (e) {
+                console.warn('ดึงพิกัดจาก Leaflet Map ไม่สำเร็จ:', e);
+            }
+        }
+
+        // 3. ถ้าไม่มีพิกัดจริงๆ ให้ใช้ค่าสำรอง
+        if (!lat || !lon) {
+            lat = 13.7563;
+            lon = 100.5018;
+        }
+
+        console.log(`📌 พิกัดที่จะส่งไป Windy: Lat = ${lat}, Lon = ${lon}`);
+
+        // 4. อัปเดต URL สั่งให้ Windy ซูมและปักหมุดสีแดงลงตรงพิกัดงาน
         const iframe = document.getElementById('windyIframe');
         if (iframe) {
             iframe.src = `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=11&level=surface&overlay=radar&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1`;
         }
     }
 
-    // ฟังก์ชันปิด Modal
     function closeWindyModal() {
         const modal = document.getElementById('windyModal');
         if (modal) modal.classList.add('hidden');
