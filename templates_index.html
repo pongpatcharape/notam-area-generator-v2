@@ -500,42 +500,37 @@
 </div>
 
 <!-- ========================================================= -->
-<!-- 🌤️ WEATHER RADAR MODAL (หน้าต่างป๊อปอัปเรดาร์สภาพอากาศ) -->
+<!-- 🌤️ WEATHER RADAR MODAL (Windy Embed แบบเป๊ะ 100%) -->
 <!-- ========================================================= -->
 <div id="windyModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-3 sm:p-6">
     <div class="bg-[#1E222A] w-full max-w-6xl h-[88vh] rounded-2xl border border-blue-500/40 shadow-2xl flex flex-col overflow-hidden relative">
         
         <!-- Header -->
         <div class="flex items-center justify-between p-3 border-b border-slate-700 bg-slate-800">
-            <!-- ฝั่งซ้าย: ไอคอน & ชื่อ Modal -->
             <div class="flex items-center gap-2">
                 <span class="text-blue-400 font-bold">🌀</span>
                 <h3 class="text-white font-semibold text-sm">Weather Radar & Atmosphere Analysis</h3>
             </div>
             
-            <!-- ฝั่งขวา: ปุ่ม Layer + ปุ่มกากบาทปิด -->
-            <div class="flex items-center gap-3">
-                <div class="flex gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-700">
-                    <button onclick="changeWindyLayer('rain')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition">Rain</button>
-                    <button onclick="changeWindyLayer('wind')" class="px-2.5 py-1 bg-teal-600 hover:bg-teal-500 text-white text-xs rounded transition">Wind</button>
-                    <button onclick="changeWindyLayer('temp')" class="px-2.5 py-1 bg-orange-600 hover:bg-orange-500 text-white text-xs rounded transition">Temp</button>
-                    <button onclick="changeWindyLayer('clouds')" class="px-2.5 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition">Clouds</button>
-                </div>
-
-                <!-- ❌ ปุ่มกากบาทปิด Modal -->
-                <button onclick="closeWindyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition focus:outline-none">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
+            <!-- ❌ ปุ่มกากบาทปิด Modal -->
+            <button onclick="closeWindyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
 
-        <!-- 🗺️ กล่องแสดงแผนที่ Windy (เพิ่มบรรทัดนี้เข้ามา) -->
-        <div id="windy" class="w-full flex-1 h-full min-h-[400px]"></div>
+        <!-- 🗺️ Windy Embed Frame (ดึง Windy หน้าจริงมาแสดง) -->
+        <div class="w-full flex-1 h-full min-h-[400px]">
+            <iframe 
+                id="windyIframe" 
+                class="w-full h-full border-0"
+                src="https://embed.windy.com/embed2.html?lat=13.7563&lon=100.5018&detailLat=13.7563&detailLon=100.5018&width=650&height=450&zoom=9&level=surface&overlay=radar&product=ecmwf&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1"
+                allow="geolocation">
+            </iframe>
+        </div>
 
     </div>
-</div>
 </div>
 
 <!-- Leaflet JS Script -->
@@ -1941,102 +1936,32 @@ async function loadUavElevationAnalysis() {
 </script>
 
 <script>
-    const WINDY_API_KEY = '2oB2nJI5zqiHseb02SDHxZUUmpdDiWfr';
-
-    let windyMapInstance = null;
-    let windyPolygonLayer = null;
-    let isWindyInitialized = false;
-    let windyStoreRef = null;
-
-    // 1. ฟังก์ชันเปิด Modal Radar
+    // ฟังก์ชันเปิด Modal พร้อมซูมไปยังพิกัดแปลงงาน UAV ของเราอัตโนมัติ
     function openWeatherRadar() {
         const modal = document.getElementById('windyModal');
         if (modal) modal.classList.remove('hidden');
 
-        let coords = [];
+        // ตรวจหาพิกัดพื้นที่งาน (uavPoint) เพื่อเลื่อนแผนที่ Windy ไปตรงจุดงาน
+        let lat = 13.7563;
+        let lon = 100.5018;
+
         if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
-            coords = uavPoint.map(p => {
-                if (Array.isArray(p)) return p;
-                if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
-                return p;
-            });
+            const firstPt = uavPoint[0];
+            lat = Array.isArray(firstPt) ? firstPt[0] : (firstPt.lat || lat);
+            lon = Array.isArray(firstPt) ? firstPt[1] : (firstPt.lng || lon);
         }
 
-        setTimeout(() => {
-            if (!isWindyInitialized) {
-                initWindyMap(coords);
-            } else {
-                renderWorkAreaOnWindy(coords);
-                if (windyMapInstance) windyMapInstance.invalidateSize();
-            }
-        }, 300);
-    }
-
-    // 2. ฟังก์ชันเริ่มต้นแผนที่ Windy
-    function initWindyMap(coords) {
-        if (typeof windyInit !== 'function') {
-            console.error('Windy API (libBoot.js) ยังไม่ได้ถูกดึงเข้ามาใน <head>');
-            return;
-        }
-
-        const defaultLat = (coords && coords.length > 0) ? coords[0][0] : 13.7563;
-        const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
-
-        const options = {
-            key: WINDY_API_KEY,
-            lat: defaultLat,
-            lon: defaultLng,
-            zoom: 8,
-            overlay: 'rain'
-        };
-
-        windyInit(options, windyAPI => {
-            const { map, store } = windyAPI;
-            windyMapInstance = map;
-            windyStoreRef = store;
-            isWindyInitialized = true;
-
-            renderWorkAreaOnWindy(coords);
-        });
-    }
-
-    // 3. ฟังก์ชันวาด Polygon พื้นที่การทำงาน
-    function renderWorkAreaOnWindy(coords) {
-        if (!windyMapInstance) return;
-
-        if (windyPolygonLayer) {
-            windyMapInstance.removeLayer(windyPolygonLayer);
-            windyPolygonLayer = null;
-        }
-
-        if (coords && coords.length >= 3 && typeof L !== 'undefined') {
-            windyPolygonLayer = L.polygon(coords, {
-                color: '#FFD700',
-                weight: 3,
-                fillColor: '#FF9900',
-                fillOpacity: 0.4,
-                dashArray: '6, 6'
-            }).addTo(windyMapInstance);
-
-            if (windyPolygonLayer.getBounds().isValid()) {
-                windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
-            }
+        // อัปเดตพิกัดตำแหน่งใน Iframe
+        const iframe = document.getElementById('windyIframe');
+        if (iframe) {
+            iframe.src = `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=10&level=surface&overlay=radar&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1`;
         }
     }
 
-    // 4. ฟังก์ชันเปลี่ยน Layer (ฝน/ลม/อุณหภูมิ/เมฆ)
-    function changeWindyLayer(layerName) {
-        if (windyStoreRef) {
-            windyStoreRef.set('overlay', layerName);
-        }
-    }
-
-    // 5. ฟังก์ชันปิด Modal (ปุ่ม ✕)
+    // ฟังก์ชันปิด Modal
     function closeWindyModal() {
         const modal = document.getElementById('windyModal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
+        if (modal) modal.classList.add('hidden');
     }
 </script>
 </body>
