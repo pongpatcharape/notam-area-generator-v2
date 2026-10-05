@@ -3,6 +3,6 @@ shapely
 pyproj
 simplekml
 openpyxl
-gunicorn main:app
+gunicorn
 requests
 numpy
