@@ -28,8 +28,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
 
 <!-- ดึง Leaflet และ Windy API Library -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
-<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+<script src="https://unpkg.com/windy-javascript-api/libBoot.js"></script>
 
 <script id="tailwind-config">
     tailwind.config = {
@@ -1931,15 +1932,16 @@ async function loadUavElevationAnalysis() {
 <script>
         const WINDY_API_KEY = '2oB2nJI5zqiHseb02SDHxZUUmpdDiWfr';
 
-        let windyMapInstance = null;      
-        let windyStoreInstance = null;    
-        let windyPolygonLayer = null;     
-        let isWindyInitialized = false;   
+ let windyMapInstance = null;
+let windyPolygonLayer = null;
+let isWindyInitialized = false;
+let windyStoreRef = null;
 
-	function openWeatherRadar() {
+function openWeatherRadar() {
     const modal = document.getElementById('windyModal');
     if (modal) modal.classList.remove('hidden');
 
+    // แปลงพิกัด uavPoint สำหรับวาด Polygon
     let coords = [];
     if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
         coords = uavPoint.map(p => {
@@ -1949,71 +1951,68 @@ async function loadUavElevationAnalysis() {
         });
     }
 
-    // หน่วงเวลา 200ms รอให้ Modal ขยายขนาดเต็มที่ก่อนสร้างแผนที่
     setTimeout(() => {
         if (!isWindyInitialized) {
             initWindyMap(coords);
         } else {
             renderWorkAreaOnWindy(coords);
-            if (windyMapInstance) {
-                windyMapInstance.invalidateSize();
-            }
+            if (windyMapInstance) windyMapInstance.invalidateSize();
         }
-    }, 200);
+    }, 300);
 }
 
-        function closeWindyModal() {
-            const modal = document.getElementById('windyModal');
-            if (modal) modal.classList.add('hidden');
-        }
+function initWindyMap(coords) {
+    const defaultLat = (coords && coords.length > 0) ? coords[0][0] : 13.7563;
+    const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
 
-        function initWindyMap(coords) {
-            const defaultLat = (coords && coords.length > 0) ? coords[0][0] : 13.7563;
-            const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
+    const options = {
+        key: 'ใส่_WINDY_API_KEY_ใหม่ของคุณ',
+        lat: defaultLat,
+        lon: defaultLng,
+        zoom: 8,
+        overlay: 'rain' // สำคัญ: ใช้ 'rain' หรือ 'wind' ห้ามใช้ 'radar'
+    };
 
-            const options = {
-                key: WINDY_API_KEY,
-                lat: defaultLat,
-                lon: defaultLng,
-                zoom: 9,
-                overlay: 'radar',
-            };
+    windyInit(options, windyAPI => {
+        const { map, store } = windyAPI;
+        windyMapInstance = map;
+        windyStoreRef = store;
+        isWindyInitialized = true;
 
-            windyInit(options, (windyAPI) => {
-                const { map, store } = windyAPI;
-                windyMapInstance = map;        
-                windyStoreInstance = store;    
-                isWindyInitialized = true;
+        // วาด Polygon ทับลงบนแผนที่ Windy
+        renderWorkAreaOnWindy(coords);
+    });
+}
 
-                renderWorkAreaOnWindy(coords);
-            });
-        }
+function renderWorkAreaOnWindy(coords) {
+    if (!windyMapInstance) return;
 
-        function renderWorkAreaOnWindy(coords) {
-            if (!windyMapInstance) return;
+    // ลบ Layer เดิมถ้ามี
+    if (windyPolygonLayer) {
+        windyMapInstance.removeLayer(windyPolygonLayer);
+    }
 
-            if (windyPolygonLayer) {
-                windyMapInstance.removeLayer(windyPolygonLayer);
-            }
+    if (coords && coords.length >= 3) {
+        windyPolygonLayer = L.polygon(coords, {
+            color: '#FFD700',       // ขอบสีทอง
+            weight: 3,
+            fillColor: '#FF9900',   
+            fillOpacity: 0.4,
+            dashArray: '6, 6'
+        }).addTo(windyMapInstance);
 
-            if (coords && coords.length >= 3) {
-                windyPolygonLayer = L.polygon(coords, {
-                    color: '#FFD700',       
-                    weight: 3,
-                    fillColor: '#FF9900',   
-                    fillOpacity: 0.35,
-                    dashArray: '6, 6'       
-                }).addTo(windyMapInstance);
+        // ขยับซูมแผนที่ให้อยู่ในขอบเขต Polygon
+        windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
+    }
+}
 
-                windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
-            }
-        }
-
-        function setWindyLayer(overlay) {
-            if (windyStoreInstance) {
-                windyStoreInstance.set('overlay', overlay);
-            }
-        }
+// ฟังก์ชันเปลี่ยน Layer ลม/ฝน/อุณหภูมิ ด้วยปุ่ม
+function changeWindyLayer(layerName) {
+    if (windyStoreRef) {
+        // Windy รองรับชื่อเลเยอร์: 'rain', 'wind', 'temp', 'clouds'
+        windyStoreRef.set('overlay', layerName);
+    }
+}
     </script>
 </body>
 </html>
