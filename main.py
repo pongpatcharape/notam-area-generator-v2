@@ -628,4 +628,8 @@ def download_uav():
     return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name=f'{project_name}_UAV_Package.zip')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    # 1. ดึงพอร์ตที่ Render กำหนดให้ผ่าน Environment Variable (ถ้าไม่มีให้ใช้ 8000)
+    port = int(os.environ.get('PORT', 8000))
+    
+    # 2. ต้องตั้ง host='0.0.0.0' เท่านั้น เพื่อให้ Render สแกนพอร์ตเจอ
+    app.run(host='0.0.0.0', port=port)
