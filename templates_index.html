@@ -1934,93 +1934,107 @@ async function loadUavElevationAnalysis() {
 </script>
 
 <script>
-        const WINDY_API_KEY = '2oB2nJI5zqiHseb02SDHxZUUmpdDiWfr';
+    const WINDY_API_KEY = '2oB2nJI5zqiHseb02SDHxZUUmpdDiWfr';
 
- let windyMapInstance = null;
-let windyPolygonLayer = null;
-let isWindyInitialized = false;
-let windyStoreRef = null;
+    let windyMapInstance = null;
+    let windyPolygonLayer = null;
+    let isWindyInitialized = false;
+    let windyStoreRef = null;
 
-function openWeatherRadar() {
-    const modal = document.getElementById('windyModal');
-    if (modal) modal.classList.remove('hidden');
+    // ฟังก์ชันเปิด Modal Radar
+    function openWeatherRadar() {
+        const modal = document.getElementById('windyModal');
+        if (modal) modal.classList.remove('hidden');
 
-    // แปลงพิกัด uavPoint สำหรับวาด Polygon
-    let coords = [];
-    if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
-        coords = uavPoint.map(p => {
-            if (Array.isArray(p)) return p;
-            if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
-            return p;
+        // แปลงพิกัด uavPoint สำหรับวาด Polygon
+        let coords = [];
+        if (typeof uavPoint !== 'undefined' && Array.isArray(uavPoint) && uavPoint.length > 0) {
+            coords = uavPoint.map(p => {
+                if (Array.isArray(p)) return p;
+                if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
+                return p;
+            });
+        }
+
+        setTimeout(() => {
+            if (!isWindyInitialized) {
+                initWindyMap(coords);
+            } else {
+                renderWorkAreaOnWindy(coords);
+                if (windyMapInstance) windyMapInstance.invalidateSize();
+            }
+        }, 300);
+    }
+
+    // ฟังก์ชันเริ่มต้นแผนที่ Windy
+    function initWindyMap(coords) {
+        if (typeof windyInit !== 'function') {
+            console.error('Windy API (libBoot.js) ยังไม่ได้ถูกดึงเข้ามาใน <head>');
+            return;
+        }
+
+        const defaultLat = (coords && coords.length > 0) ? coords[0][0] : 13.7563;
+        const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
+
+        const options = {
+            key: WINDY_API_KEY, // แก้ใช้ตัวแปรที่ประกาศไว้ข้างบน
+            lat: defaultLat,
+            lon: defaultLng,
+            zoom: 8,
+            overlay: 'rain' // ใช้ 'rain', 'wind', 'temp', 'clouds'
+        };
+
+        windyInit(options, windyAPI => {
+            const { map, store } = windyAPI;
+            windyMapInstance = map;
+            windyStoreRef = store;
+            isWindyInitialized = true;
+
+            // วาด Polygon ทับลงบนแผนที่ Windy
+            renderWorkAreaOnWindy(coords);
         });
     }
 
-    setTimeout(() => {
-        if (!isWindyInitialized) {
-            initWindyMap(coords);
-        } else {
-            renderWorkAreaOnWindy(coords);
-            if (windyMapInstance) windyMapInstance.invalidateSize();
+    // ฟังก์ชันวาดพื้นที่การทำงาน Polygon
+    function renderWorkAreaOnWindy(coords) {
+        if (!windyMapInstance) return;
+
+        // ลบ Layer เดิมถ้ามี
+        if (windyPolygonLayer) {
+            windyMapInstance.removeLayer(windyPolygonLayer);
+            windyPolygonLayer = null;
         }
-    }, 300);
-}
 
-function initWindyMap(coords) {
-    const defaultLat = (coords && coords.length > 0) ? coords[0][0] : 13.7563;
-    const defaultLng = (coords && coords.length > 0) ? coords[0][1] : 100.5018;
+        if (coords && coords.length >= 3 && typeof L !== 'undefined') {
+            windyPolygonLayer = L.polygon(coords, {
+                color: '#FFD700',       // ขอบสีทอง
+                weight: 3,
+                fillColor: '#FF9900',   
+                fillOpacity: 0.4,
+                dashArray: '6, 6'
+            }).addTo(windyMapInstance);
 
-    const options = {
-        key: 'ใส่_WINDY_API_KEY_ใหม่ของคุณ',
-        lat: defaultLat,
-        lon: defaultLng,
-        zoom: 8,
-        overlay: 'rain' // สำคัญ: ใช้ 'rain' หรือ 'wind' ห้ามใช้ 'radar'
-    };
-
-    windyInit(options, windyAPI => {
-        const { map, store } = windyAPI;
-        windyMapInstance = map;
-        windyStoreRef = store;
-        isWindyInitialized = true;
-
-        // วาด Polygon ทับลงบนแผนที่ Windy
-        renderWorkAreaOnWindy(coords);
-    });
-}
-
-function renderWorkAreaOnWindy(coords) {
-    if (!windyMapInstance) return;
-
-    // ลบ Layer เดิมถ้ามี
-    if (windyPolygonLayer) {
-        windyMapInstance.removeLayer(windyPolygonLayer);
+            // ขยับซูมแผนที่ให้อยู่ในขอบเขต Polygon
+            if (windyPolygonLayer.getBounds().isValid()) {
+                windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
+            }
+        }
     }
 
-    if (coords && coords.length >= 3) {
-        windyPolygonLayer = L.polygon(coords, {
-            color: '#FFD700',       // ขอบสีทอง
-            weight: 3,
-            fillColor: '#FF9900',   
-            fillOpacity: 0.4,
-            dashArray: '6, 6'
-        }).addTo(windyMapInstance);
+    // ฟังก์ชันเปลี่ยน Layer ลม/ฝน/อุณหภูมิ ด้วยปุ่ม
+    function changeWindyLayer(layerName) {
+        if (windyStoreRef) {
+            windyStoreRef.set('overlay', layerName);
+        }
+    }
 
-        // ขยับซูมแผนที่ให้อยู่ในขอบเขต Polygon
-        windyMapInstance.fitBounds(windyPolygonLayer.getBounds(), { padding: [50, 50] });
+    // ฟังก์ชันปิด Modal (แยกออกมาถูกต้องแล้ว)
+    function closeWindyModal() {
+        const modal = document.getElementById('windyModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     }
-}
-
-// ฟังก์ชันเปลี่ยน Layer ลม/ฝน/อุณหภูมิ ด้วยปุ่ม
-function changeWindyLayer(layerName) {
-    if (windyStoreRef) {
-        // Windy รองรับชื่อเลเยอร์: 'rain', 'wind', 'temp', 'clouds'
-        windyStoreRef.set('overlay', layerName);
-    }
-function closeWindyModal() {
-    const modal = document.getElementById('windyModal');
-    if (modal) modal.classList.add('hidden');
-    }
-}
-    </script>
+</script>
 </body>
 </html>
