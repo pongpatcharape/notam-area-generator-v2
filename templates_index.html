@@ -51,6 +51,9 @@
         }
     }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="nofly-layer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <style>
     .glass-panel { background: rgba(30, 34, 42, 0.95); backdrop-filter: blur(8px); border: 1px solid #414754; }
     #map { width: 100%; height: 100%; z-index: 0; transition: background-color 0.3s ease; }
@@ -89,11 +92,15 @@
             <span class="text-xl font-bold text-primary">AERIAL SURVEY CONTROL</span>
         </div>
         <div class="flex items-center gap-4">
+<button onclick="noFlyManager.toggle()" class="bg-red-600/90 hover:bg-red-600 text-white font-medium px-3 py-1.5 rounded-lg text-xs shadow-md border border-red-500/50 flex items-center gap-1.5 transition">
+        <span>🚫</span> No-Fly Zone
+    </button>
 <button type="button" onclick="openWeatherRadar()" id="btn-toggle-radar" class="bg-[#111827] hover:bg-gray-800 border border-outline-variant text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-on-surface-variant cursor-pointer">
     <span class="material-symbols-outlined text-[18px] text-blue-400">radar</span>
     <span>WEATHER RADAR</span>
 </button>
             <button class="hover:text-primary transition-colors p-2 rounded-full"><span class="material-symbols-outlined">account_circle</span></button>
+	
         </div>
     </div>
 </nav>
@@ -323,61 +330,170 @@
             </div>
         </div>
 
-        <!-- 🚁 PANEL: DOCUMENT FOR UAV -->
-        <div id="panel-document" class="hidden absolute left-6 top-6 z-30 w-[360px] max-w-[calc(100vw-32px)]">
-            <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500 max-h-[calc(100vh-100px)] overflow-y-auto">
-                <div class="flex justify-between items-center border-b border-outline-variant pb-2">
-                    <h3 class="text-xs font-bold text-orange-400 uppercase flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">description</span> UAV DOCUMENT INFO
-                    </h3>
-                    <button class="btn-close-panel text-on-surface-variant hover:text-white transition-colors"><span class="material-symbols-outlined text-[18px]">close</span></button>
+<!-- 🚁 PANEL: DOCUMENT FOR UAV -->
+<div id="panel-document" class="hidden absolute left-6 top-6 z-30 w-[380px] max-w-[calc(100vw-32px)]">
+    <div class="glass-panel rounded-lg p-5 flex flex-col gap-4 shadow-2xl border-t-4 border-t-orange-500 max-h-[calc(100vh-80px)] overflow-y-auto">
+        
+        <!-- Header Panel -->
+        <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+            <h3 class="text-xs font-bold text-orange-400 uppercase flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">description</span> UAV DOCUMENT INFO
+            </h3>
+            <button class="btn-close-panel text-on-surface-variant hover:text-white transition-colors">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+        </div>
+        
+        <section class="flex flex-col gap-3">
+            
+            <!-- 🔽 1. เลือกประเภทเอกสาร -->
+            <div class="flex flex-col gap-1 border-b border-gray-800 pb-3">
+                <label class="text-xs text-orange-400 font-semibold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">article</span> ประเภทเอกสารที่ต้องการ
+                </label>
+                <select id="docTypeSelect" onchange="handleDocTypeChange()" class="bg-[#111827] border border-orange-500/50 focus:border-orange-500 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full font-medium">
+                    <option value="notam" selected>1. แบบคำขอเปิด NOTAM (กพท./บพ.)</option>
+                    <option value="vtr1">2. หนังสือขออนุญาตบินเขต VTR1 (กรุงเทพฯ)</option>
+                    <option value="official">3. หนังสือขออนุญาตหน่วยงาน/สภ./ท่าอากาศยาน</option>
+                </select>
+            </div>
+
+            <!-- 📄 SECTION A: NOTAM & Official (ฟิลด์เดิม 100% ไม่แตะต้อง) -->
+            <div id="defaultCommonSection" class="flex flex-col gap-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface font-medium">วันเริ่มต้น</label>
+                        <input type="text" id="docStartDate" placeholder="YYYY-MM-DD" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-on-surface font-medium">เวลา (HH:MM)</label>
+                        <input type="text" id="docStartTime" value="08:00" placeholder="08:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+                    </div>
                 </div>
-                
-                <section class="flex flex-col gap-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs text-on-surface font-medium">วันเริ่มต้น</label>
-                            <input type="text" id="docStartDate" placeholder="YYYY-MM-DD" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs text-on-surface font-medium">เวลา (HH:MM)</label>
-                            <input type="text" id="docStartTime" value="08:00" placeholder="08:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs text-on-surface font-medium">วันสิ้นสุด</label>
-                            <input type="text" id="docEndDate" placeholder="YYYY-MM-DD" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs text-on-surface font-medium">เวลา (HH:MM)</label>
-                            <input type="text" id="docEndTime" value="17:00" placeholder="17:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
-                        </div>
-                    </div>
-
+                <div class="grid grid-cols-2 gap-2">
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs text-on-surface font-medium">ผู้ประสานงาน</label>
-                        <select id="docCoordinator" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
-                            <option value="">-- โหลดข้อมูล --</option>
-                        </select>
+                        <label class="text-xs text-on-surface font-medium">วันสิ้นสุด</label>
+                        <input type="text" id="docEndDate" placeholder="YYYY-MM-DD" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
                     </div>
-
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs text-on-surface font-medium">ผู้ติดต่อเร่งด่วน</label>
-                        <select id="docEmergency" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
-                            <option value="">-- โหลดข้อมูล --</option>
-                        </select>
+                        <label class="text-xs text-on-surface font-medium">เวลา (HH:MM)</label>
+                        <input type="text" id="docEndTime" value="17:00" placeholder="17:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
                     </div>
-                </section>
+                </div>
 
-                <div class="flex flex-col gap-2 mt-2">
-                    <button id="submitDocBtn" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-sm">
-                        <span class="material-symbols-outlined text-[18px]">open_in_new</span> ยืนยันข้อมูลเอกสาร
-                    </button>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-on-surface font-medium">ผู้แจ้ง / ผู้ประสานงาน</label>
+                    <select id="docCoordinator" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+                        <option value="">-- โหลดข้อมูล --</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-on-surface font-medium">ผู้ติดต่อเร่งด่วน / ผู้บังคับโดรน</label>
+                    <select id="docEmergency" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+                        <option value="">-- โหลดข้อมูล --</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-on-surface font-medium">สถานที่ทำการบิน / พื้นที่</label>
+                    <input type="text" id="docLocation" placeholder="เช่น เขตดอนเมือง กรุงเทพมหานคร" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
                 </div>
             </div>
+
+           <!-- ✈️ SECTION B: เฉพาะ VTR1 -->
+<div id="vtr1Section" class="hidden flex flex-col gap-3">
+    
+    <!-- 1. วันที่ทำการบิน (ใช้ type="date" เปิดปฏิทิน) -->
+    <div class="flex flex-col gap-1">
+        <label class="text-xs text-blue-400 font-medium">วันที่ทำการบิน</label>
+        <input type="date" id="docVtr1FlightDate" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full [color-scheme:dark]">
+    </div>
+
+    <!-- 2. เวลาเริ่มต้น / เวลาสิ้นสุด -->
+    <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-blue-400 font-medium">เวลาเริ่มต้น (HH:MM)</label>
+            <input type="text" id="docVtr1StartTime" value="08:00" placeholder="08:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
         </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-blue-400 font-medium">เวลาสิ้นสุด (HH:MM)</label>
+            <input type="text" id="docVtr1EndTime" value="17:00" placeholder="17:00" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+        </div>
+    </div>
+
+    <!-- 3. ผู้แจ้ง / ผู้ประสานงาน (ดึงข้อมูลจาก personnel.json) -->
+    <div class="flex flex-col gap-1">
+        <label class="text-xs text-blue-400 font-medium">ผู้แจ้ง / ผู้ประสานงาน</label>
+        <select id="docVtr1Coordinator" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+            <option value="">-- เลือกผู้ประสานงาน --</option>
+        </select>
+    </div>
+
+    <!-- 4. สถานที่ทำการบิน -->
+    <div class="flex flex-col gap-1">
+        <label class="text-xs text-blue-400 font-medium">สถานที่ทำการบิน / พื้นที่</label>
+        <input type="text" id="docVtr1Location" placeholder="เช่น เขตดอนเมือง กรุงเทพมหานคร" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+    </div>
+
+    <!-- ข้อมูลอุปกรณ์และสเปกโดรน -->
+    <div class="flex flex-col gap-1 pt-2 border-t border-gray-800">
+        <label class="text-xs text-blue-400 font-semibold">เลขขึ้นทะเบียนผู้บังคับฯ (กพท.)</label>
+        <input type="text" id="docVtr1Reg" placeholder="เช่น CAAT-12345-67" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-blue-400 font-semibold">ยี่ห้ออากาศยาน</label>
+            <input type="text" id="docVtr1Brand" value="DJI" placeholder="DJI" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-blue-400 font-semibold">รุ่นอากาศยาน</label>
+            <input type="text" id="docVtr1Model" placeholder="Mavic 3 Enterprise" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-blue-400 font-semibold">S/N อากาศยาน</label>
+            <input type="text" id="docVtr1SN" placeholder="1582FXXXXXXXX" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-xs text-blue-400 font-semibold">น้ำหนักโดรน (กก.)</label>
+            <input type="text" id="docVtr1Weight" value="1.5 กก." placeholder="1.5 กก." class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-xs text-blue-400 font-semibold">ความสูงสูงสุด (Max Altitude)</label>
+        <input type="text" id="docVtr1MaxAlt" value="90 เมตร AGL" placeholder="90 เมตร AGL" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+    </div>
+
+</div>
+            <!-- 🏛️ SECTION C: ช่องเฉพาะ หนังสือขออนุญาตหน่วยงาน (ซ่อนไว้ก่อน) -->
+            <div id="officialSection" class="hidden flex flex-col gap-3 pt-2 border-t border-gray-800">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-emerald-400 font-semibold">เรียน (หน่วยงาน / สภ. / ท่าอากาศยาน)</label>
+                    <input type="text" id="docOfficialRecipient" placeholder="เช่น ผู้กำกับการสถานีตำรวจนครบาลดอนเมือง" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs text-emerald-400 font-semibold">วัตถุประสงค์การบิน</label>
+                    <input type="text" id="docOfficialPurpose" placeholder="เช่น เพื่อการสำรวจทางอากาศจัดทำผังเมือง" class="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-sm text-on-surface outline-none w-full">
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Submit Button -->
+        <div class="flex flex-col gap-2 mt-2">
+            <button id="submitDocBtn" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-sm">
+                <span class="material-symbols-outlined text-[18px]">open_in_new</span> ยืนยันข้อมูลเอกสาร
+            </button>
+        </div>
+
+    </div>
+</div>
 
 <!-- ⛰️ RIGHT SIDEBAR: LOS PROFILE & ELEVATION GRAPH -->
         <div id="losProfileRightSidebar" style="z-index: 99999;" class="translate-x-full fixed right-0 top-16 bottom-0 w-full md:w-[50%] lg:w-[48%] glass-panel border-l border-blue-500/50 shadow-2xl bg-[#1E222A]/98 p-5 flex flex-col gap-3 overflow-hidden">
@@ -502,8 +618,8 @@
 <!-- ========================================================= -->
 <!-- 🌤️ WEATHER RADAR MODAL (Windy Embed พร้อมปักหมุดแปลงงาน) -->
 <!-- ========================================================= -->
-<div id="windyModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-3 sm:p-6">
-    <div class="bg-[#1E222A] w-full max-w-6xl h-[88vh] rounded-2xl border border-blue-500/40 shadow-2xl flex flex-col overflow-hidden relative">
+<div id="windyModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-2 sm:p-3">
+    <div class="bg-[#1E222A] w-full max-w-[96vw] h-[95vh] rounded-2xl border border-blue-500/40 shadow-2xl flex flex-col overflow-hidden relative">
         
         <!-- Header -->
         <div class="flex items-center justify-between p-3 border-b border-slate-700 bg-slate-800">
@@ -898,6 +1014,8 @@
         
         uavMarkersLayer.addTo(map);
         uavPolygonLayer.addTo(map);
+
+	window.noFlyManager = new NoFlyZoneManager(map);
 
         map.on('click', function(e) {
             if (currentMode === 'uav') {
@@ -1378,35 +1496,51 @@ async function calculateAreaElevation() {
         document.getElementById('losStatusText').textContent = "status : ready";
     }
 
-    async function loadPersonnelData() {
-        try {
-            const res = await fetch('/personnel.json');
-            if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
-            const personnelList = await res.json();
+async function loadPersonnelData() {
+    try {
+        const res = await fetch('/personnel.json');
+        if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
+        const personnelList = await res.json();
 
-            const coordSelect = document.getElementById('docCoordinator');
-            const emergSelect = document.getElementById('docEmergency');
-            
-            coordSelect.innerHTML = '<option value="">-- เลือกผู้ประสานงาน --</option>';
-            emergSelect.innerHTML = '<option value="">-- เลือกผู้ติดต่อเร่งด่วน --</option>';
+        const coordSelect = document.getElementById('docCoordinator');
+        const emergSelect = document.getElementById('docEmergency');
+        const vtr1CoordSelect = document.getElementById('docVtr1Coordinator'); // 👈 เพิ่ม VTR1
 
-            personnelList.forEach(p => {
-                const label = `${p.name || p} ${p.phone ? '(' + p.phone + ')' : ''}`.trim();
+        if (coordSelect) coordSelect.innerHTML = '<option value="">-- เลือกผู้ประสานงาน --</option>';
+        if (emergSelect) emergSelect.innerHTML = '<option value="">-- เลือกผู้ติดต่อเร่งด่วน --</option>';
+        if (vtr1CoordSelect) vtr1CoordSelect.innerHTML = '<option value="">-- เลือกผู้ประสานงาน --</option>'; // 👈 เพิ่ม VTR1
+
+        personnelList.forEach(p => {
+            const label = `${p.name || p} ${p.phone ? '(' + p.phone + ')' : ''}`.trim();
+
+            // 1. ช่องผู้ประสานงาน NOTAM
+            if (coordSelect) {
                 const opt1 = document.createElement('option');
                 opt1.value = label;
                 opt1.textContent = label;
                 coordSelect.appendChild(opt1);
+            }
 
+            // 2. ช่องผู้ติดต่อเร่งด่วน NOTAM
+            if (emergSelect) {
                 const opt2 = document.createElement('option');
                 opt2.value = label;
                 opt2.textContent = label;
                 emergSelect.appendChild(opt2);
-            });
-        } catch (err) {
-            console.error("Error loading personnel for UAV:", err);
-        }
-    }
+            }
 
+            // 3. ช่องผู้ประสานงาน VTR1 (เพิ่มใหม่)
+            if (vtr1CoordSelect) {
+                const opt3 = document.createElement('option');
+                opt3.value = label;
+                opt3.textContent = label;
+                vtr1CoordSelect.appendChild(opt3);
+            }
+        });
+    } catch (err) {
+        console.error("Error loading personnel for UAV:", err);
+    }
+}
     async function loadPersonnelDataForAirplane() {
         try {
             const res = await fetch('/personnel.json');
@@ -1989,7 +2123,7 @@ async function loadUavElevationAnalysis() {
         // 4. อัปเดต URL สั่งให้ Windy ซูมและปักหมุดสีแดงลงตรงพิกัดงาน
         const iframe = document.getElementById('windyIframe');
         if (iframe) {
-            iframe.src = `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=11&level=surface&overlay=radar&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1`;
+         iframe.src = `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=11&level=surface&overlay=rain&product=ecmwf&menu=&message=true&marker=true&calendar=1&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1`;
         }
     }
 
@@ -1998,5 +2132,94 @@ async function loadUavElevationAnalysis() {
         if (modal) modal.classList.add('hidden');
     }
 </script>
+
+    <script>
+   function handleDocTypeChange() {
+    const docType = document.getElementById('docTypeSelect').value;
+    const defaultCommonSection = document.getElementById('defaultCommonSection');
+    const vtr1Section = document.getElementById('vtr1Section');
+    const officialSection = document.getElementById('officialSection');
+
+    if (docType === 'vtr1') {
+        // ซ่อนชุดฟิลด์เดิม เปิดเฉพาะ VTR1
+        defaultCommonSection.classList.add('hidden');
+        vtr1Section.classList.remove('hidden');
+        officialSection.classList.add('hidden');
+    } else if (docType === 'official') {
+        // ใช้ชุดฟิลด์เดิม + ฟิลด์เรียน/วัตถุประสงค์
+        defaultCommonSection.classList.remove('hidden');
+        vtr1Section.classList.add('hidden');
+        officialSection.classList.remove('hidden');
+    } else {
+        // NOTAM: ใช้ชุดฟิลด์เดิมล้วนๆ
+        defaultCommonSection.classList.remove('hidden');
+        vtr1Section.classList.add('hidden');
+        officialSection.classList.add('hidden');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // รันควบคุมการแสดงผลตั้งแต่โหลดหน้า
+    if (typeof handleDocTypeChange === 'function') {
+        handleDocTypeChange();
+    }
+
+    // กรณีมีฟังก์ชันเติม dropdown บุคลากร ให้เติมทั้งสองฝั่ง (ทั้ง docCoordinator/docEmergency และ docVtr1Coordinator/docVtr1Signer)
+    if (typeof populatePersonnelDropdowns === 'function') {
+        populatePersonnelDropdowns();
+    }
+
+    document.getElementById('submitDocBtn')?.addEventListener('click', function() {
+        const docType = document.getElementById('docTypeSelect').value;
+
+        if (docType === 'notam') {
+            // 1. NOTAM (ใช้ค่าจาก defaultCommonSection เดิม)
+            const startDate = document.getElementById('docStartDate')?.value || '';
+            const startTime = document.getElementById('docStartTime')?.value || '';
+            const endDate = document.getElementById('docEndDate')?.value || '';
+            const endTime = document.getElementById('docEndTime')?.value || '';
+            const coordinator = encodeURIComponent(document.getElementById('docCoordinator')?.value || '');
+            const emergency = encodeURIComponent(document.getElementById('docEmergency')?.value || '');
+            const location = encodeURIComponent(document.getElementById('docLocation')?.value || '');
+
+            const queryParams = `startDate=${startDate}&startTime=${startTime}&endDate=${endDate}&endTime=${endTime}&coordinator=${coordinator}&emergency=${emergency}&location=${location}`;
+            window.open(`./notam-form.html?${queryParams}`, '_blank');
+
+        } else if (docType === 'vtr1') {
+            // 2. VTR1 (ใช้ค่าเฉพาะจาก vtr1Section)
+            const flightDate = document.getElementById('docVtr1FlightDate')?.value || '';
+            const startTime = document.getElementById('docVtr1StartTime')?.value || '';
+            const endTime = document.getElementById('docVtr1EndTime')?.value || '';
+            const coordinator = encodeURIComponent(document.getElementById('docVtr1Coordinator')?.value || '');
+            const signer = encodeURIComponent(document.getElementById('docVtr1Signer')?.value || '');
+            const location = encodeURIComponent(document.getElementById('docVtr1Location')?.value || '');
+            const reg = encodeURIComponent(document.getElementById('docVtr1Reg')?.value || '');
+            const brand = encodeURIComponent(document.getElementById('docVtr1Brand')?.value || '');
+            const model = encodeURIComponent(document.getElementById('docVtr1Model')?.value || '');
+            const sn = encodeURIComponent(document.getElementById('docVtr1SN')?.value || '');
+            const weight = encodeURIComponent(document.getElementById('docVtr1Weight')?.value || '');
+            const maxAlt = encodeURIComponent(document.getElementById('docVtr1MaxAlt')?.value || '');
+
+            const vtr1QueryParams = `flightDate=${flightDate}&startTime=${startTime}&endTime=${endTime}&coordinator=${coordinator}&signer=${signer}&location=${location}&reg=${reg}&brand=${brand}&model=${model}&sn=${sn}&weight=${weight}&maxAlt=${maxAlt}`;
+            window.open(`./vtr1.html?${vtr1QueryParams}`, '_blank');
+
+        } else if (docType === 'official') {
+            // 3. Official Letter
+            const startDate = document.getElementById('docStartDate')?.value || '';
+            const startTime = document.getElementById('docStartTime')?.value || '';
+            const endDate = document.getElementById('docEndDate')?.value || '';
+            const endTime = document.getElementById('docEndTime')?.value || '';
+            const coordinator = encodeURIComponent(document.getElementById('docCoordinator')?.value || '');
+            const emergency = encodeURIComponent(document.getElementById('docEmergency')?.value || '');
+            const location = encodeURIComponent(document.getElementById('docLocation')?.value || '');
+            const recipient = encodeURIComponent(document.getElementById('docOfficialRecipient')?.value || '');
+            const purpose = encodeURIComponent(document.getElementById('docOfficialPurpose')?.value || '');
+
+            const queryParams = `startDate=${startDate}&startTime=${startTime}&endDate=${endDate}&endTime=${endTime}&coordinator=${coordinator}&emergency=${emergency}&location=${location}&recipient=${recipient}&purpose=${purpose}`;
+            window.open(`./official-letter.html?${queryParams}`, '_blank');
+        }
+    });
+});
+    </script>
 </body>
 </html>
