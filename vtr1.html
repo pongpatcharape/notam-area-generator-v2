@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTR1 Request Form - Precision Pixel Overlay</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        @font-face {
+            font-family: 'TH Sarabun New';
+            src: local('TH Sarabun New'), local('THSarabunNew');
+        }
+
+        body {
+            background-color: #222;
+            font-family: 'TH Sarabun New', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        /* ล็อกขนาดตามพิกเซลจริงของภาพสไตล์เดียวกับ NOTAM (2484 x 3511 px) */
+        .wrapper {
+            width: 2484px;
+            height: 3511px;
+            position: relative;
+            background-color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            transform: scale(0.32); /* ย่อแสดงผลบนหน้าจอ */
+            transform-origin: top center;
+            margin-bottom: -2380px;
+        }
+
+        .bg-template {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* ช่องกรอกข้อความอ้างอิงพิกเซลตรงตามที่มาร์ค (มีสีแดงอ่อนช่วยเช็กตำแหน่ง) */
+        .input-box {
+            position: absolute;
+            background: rgba(255, 0, 0, 0.25); 
+            border: none;
+            outline: none;
+            font-family: 'TH Sarabun New', sans-serif;
+            font-size: 52px; /* ขนาดฟอนต์สำหรับสเกลภาพความละเอียดสูง 300 DPI */
+            color: #000000;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            line-height: 1;
+            z-index: 10;
+        }
+
+        .input-left {
+            text-align: left;
+        }
+
+        /* ช่อง Checkbox */
+        .check-box {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            appearance: none;
+            background: rgba(255, 0, 0, 0.35);
+            z-index: 10;
+        }
+        
+        .check-box:checked::after {
+            content: '✔';
+            position: absolute;
+            top: -12px;
+            left: 4px;
+            font-size: 55px;
+            color: #000000;
+            font-weight: bold;
+        }
+
+        #control-panel {
+            position: sticky;
+            top: 10px;
+            z-index: 1000;
+        }
+
+        @media print {
+            body { background: transparent; padding: 0; margin: 0; }
+            .wrapper { transform: none; margin-bottom: 0; box-shadow: none; }
+            #control-panel { display: none !important; }
+            .input-box, .check-box { background: transparent !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="control-panel" class="bg-gray-900 text-white p-4 rounded-xl mb-4 flex justify-between items-center shadow-2xl gap-4">
+        <span class="text-[18px] font-bold">📄 VTR1 Request Form Preview</span>
+        <button onclick="generatePDF()" class="bg-blue-600 hover:bg-red-500 px-6 py-2 rounded-lg font-bold transition text-[18px]">
+            📥 SAVE PDF
+        </button>
+    </div>
+
+    <div id="pdf-content" class="wrapper">
+        
+        <!-- ภาพพื้นหลังแบบฟอร์ม VTR1 -->
+        <img src="vtr1.jpg" alt="VTR1 Background" class="bg-template">
+        
+        <!-- -------------------- 1. ผู้แจ้งข้อมูล -------------------- -->
+        <input type="text" id="reporterName" class="input-box input-left" style="left: 550px; top: 707px; width: 1500px;">
+
+        <!-- -------------------- 2. ผู้บังคับหรือปล่อยอากาศยาน -------------------- -->
+        <input type="text" class="input-box" style="left: 232px; top: 927px; width: 120px;" value="1">
+        <input type="text" id="opName" class="input-box input-left" style="left: 410px; top: 927px; width: 570px;">
+        <input type="text" id="opReg" class="input-box" style="left: 1040px; top: 927px; width: 530px;">
+        <input type="text" id="opEmail" class="input-box" style="left: 1605px; top: 927px; width: 364px;">
+        <input type="text" id="opPhone" class="input-box" style="left: 1980px; top: 927px; width: 290px;">
+
+        <!-- -------------------- 3. รายละเอียดอากาศยาน -------------------- -->
+        <input type="text" class="input-box" style="left: 232px; top: 1272px; width: 120px;" value="1">
+        <input type="text" id="droneBrand" class="input-box" style="left: 390px; top: 1272px; width: 320px;" value="DJI">
+        <input type="text" id="droneModel" class="input-box" style="left: 770px; top: 1272px; width: 785px;">
+        <input type="text" id="droneWeight" class="input-box" style="left: 1630px; top: 1272px; width: 250px;" value="1.5 กก.">
+        <input type="text" id="droneSN" class="input-box" style="left: 1910px; top: 1272px; width: 360px;">
+
+        <!-- -------------------- 4. วัน เวลา สถานที่ และความสูง -------------------- -->
+        <input type="text" class="input-box" style="left: 232px; top: 1656px; width: 120px;" value="1">
+        <input type="text" id="flightDate" class="input-box" style="left: 380px; top: 1656px; width: 300px;">
+        <input type="text" id="flightTime" class="input-box" style="left: 697px; top: 1656px; width: 233px;">
+        <input type="text" id="flightLocation" class="input-box input-left" style="left: 950px; top: 1656px; width: 900px;">
+        <input type="text" id="flightMaxAlt" class="input-box" style="left: 1910px; top: 1656px; width: 350px;">
+
+        <!-- -------------------- 5. เอกสารหลักฐานที่แนบมา -------------------- -->
+        <input type="checkbox" class="check-box" style="left: 218px; top: 1998px;" checked>
+        <input type="checkbox" class="check-box" style="left: 218px; top: 2073px;" checked>
+        <input type="checkbox" class="check-box" style="left: 218px; top: 2148px;">
+        <input type="checkbox" class="check-box" style="left: 218px; top: 2223px;">
+        <input type="checkbox" class="check-box" style="left: 218px; top: 2298px;">
+        <input type="checkbox" class="check-box" style="left: 218px; top: 2448px;">
+        <input type="text" id="text" class="input-box  input-left" style="left: 560px; top: 2450px; width: 1620px;">
+        <input type="text" id="text" class="input-box  input-left" style="left: 215px; top: 2525px; width: 1980px;">
+
+        <!-- -------------------- ลายมือชื่อ และ วันที่แจ้ง -------------------- -->
+        <input type="text" id="signName" class="input-box" style="left: 450px; top: 3058px; width: 550px;">
+        <input type="text" id="signfullName" class="input-box" style="left: 450px; top: 3164px; width: 550px;">
+        
+        <!-- แก้ไขจุดที่ 3: แบ่งวันที่แจ้งข้อมูลเป็น 3 ช่อง (วัน / เดือน / ปี) ในกรอบพื้นที่เดิม 1650px - 2150px -->
+        <input type="text" id="docDay" class="input-box" style="left: 1590px; top: 3162px; width: 100px;">
+        <input type="text" id="docMonth" class="input-box" style="left: 1740px; top: 3162px; width: 120px;">
+        <input type="text" id="docYear" class="input-box" style="left: 1890px; top: 3162px; width: 100px;">
+
+    </div>
+
+    <script>
+        // ฟังก์ชันแปลงวันที่ให้เป็นรูปแบบย่อ เช่น "8 ต.ค. 69"
+        function formatThaiShortDate(dateStr) {
+            if (!dateStr) return '';
+            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            
+            // กรณีส่งมาเป็น YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                const [y, m, d] = dateStr.split('-');
+                const day = parseInt(d, 10);
+                const month = thaiMonths[parseInt(m, 10) - 1] || '';
+                const yearBE = parseInt(y, 10) + 543;
+                const year2Digits = String(yearBE).slice(-2);
+                return `${day} ${month} ${year2Digits}`;
+            }
+            
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                const day = d.getDate();
+                const month = thaiMonths[d.getMonth()];
+                const yearBE = d.getFullYear() + 543;
+                const year2Digits = String(yearBE).slice(-2);
+                return `${day} ${month} ${year2Digits}`;
+            }
+
+            return dateStr;
+        }
+
+        // 1. รับค่าพารามิเตอร์จาก URL (รองรับทั้งชุดตัวแปร VTR1 และ NOTAM)
+        const params = new URLSearchParams(window.location.search);
+
+        const flightDateRaw = params.get('flightDate') || '';
+        const startDate = params.get('startDate') || '';
+        const endDate = params.get('endDate') || '';
+        const startTime = params.get('startTime') || '08:00';
+        const endTime = params.get('endTime') || '17:00';
+
+        const coordinatorRaw = decodeURIComponent(params.get('coordinator') || '');
+        const locationRaw = decodeURIComponent(params.get('location') || '');
+        const regRaw = decodeURIComponent(params.get('reg') || '');
+        const brandRaw = decodeURIComponent(params.get('brand') || 'DJI');
+        const modelRaw = decodeURIComponent(params.get('model') || '');
+        const snRaw = decodeURIComponent(params.get('sn') || '');
+        const weightRaw = decodeURIComponent(params.get('weight') || '1.5 กก.');
+        const maxAltRaw = decodeURIComponent(params.get('maxAlt') || '90 เมตร AGL');
+        const droneRaw = decodeURIComponent(params.get('drone') || '');
+
+        // แก้ไขจุดที่ 1: จัดรูปแบบวันที่บินเป็น "8 ต.ค. 69"
+        let dateText = flightDateRaw;
+        if (!dateText) {
+            if (startDate && endDate && startDate !== endDate) {
+                dateText = `${formatThaiShortDate(startDate)} ถึง ${formatThaiShortDate(endDate)}`;
+            } else {
+                dateText = startDate || endDate;
+            }
+        }
+        if (dateText) {
+            dateText = formatThaiShortDate(dateText);
+        }
+
+        // แก้ไขจุดที่ 2: จัดรูปแบบเวลา ใส่แค่ "08:00 - 17:00" (ตัด น. ออก)
+        let timeText = (startTime && endTime) ? `${startTime} - ${endTime}` : '08:00 - 17:00';
+        timeText = timeText.replace(/\s*น\.$/, '').trim();
+
+        // เติมข้อมูลลงช่อง Input
+        document.getElementById('flightDate').value = dateText;
+        document.getElementById('flightTime').value = timeText;
+        document.getElementById('flightLocation').value = locationRaw;
+        document.getElementById('flightMaxAlt').value = maxAltRaw;
+        document.getElementById('opReg').value = regRaw;
+
+        document.getElementById('droneBrand').value = brandRaw;
+        document.getElementById('droneWeight').value = weightRaw;
+        document.getElementById('droneModel').value = modelRaw;
+        document.getElementById('droneSN').value = snRaw;
+
+        // ถ้ารับค่าแบบรวมสตริงมาทาง droneRaw (กรณีแยก S/N)
+        if (droneRaw && (!modelRaw || !snRaw)) {
+            if (droneRaw.includes('S/N:')) {
+                const parts = droneRaw.split('S/N:');
+                if (!modelRaw) document.getElementById('droneModel').value = parts[0].trim();
+                if (!snRaw) document.getElementById('droneSN').value = parts[1].trim();
+            } else if (!modelRaw) {
+                document.getElementById('droneModel').value = droneRaw;
+            }
+        }
+
+        // แก้ไขจุดที่ 3: ใส่วันที่แจ้งเป็นวันปัจจุบัน แยก 3 ช่อง (วัน / เดือน / ปี) -> เช่น 7 / ต.ค. / 69
+        const today = new Date();
+        const thaiShortMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+        const dayVal = today.getDate();
+        const monthVal = thaiShortMonths[today.getMonth()];
+        const yearBE = today.getFullYear() + 543;
+        const yearVal = String(yearBE).slice(-2);
+
+        if (document.getElementById('docDay')) document.getElementById('docDay').value = dayVal;
+        if (document.getElementById('docMonth')) document.getElementById('docMonth').value = monthVal;
+        if (document.getElementById('docYear')) document.getElementById('docYear').value = yearVal;
+
+        // 2. โหลดข้อมูลบุคคลจาก personnel.json
+        async function loadPersonnelDetails() {
+            let cleanCoordinatorName = coordinatorRaw;
+            if (coordinatorRaw.includes('(')) {
+                cleanCoordinatorName = coordinatorRaw.split('(')[0].trim();
+            }
+
+            try {
+                const res = await fetch('personnel.json');
+                if (!res.ok) throw new Error("ไม่สามารถโหลดไฟล์ personnel.json ได้");
+                const personnelList = await res.json();
+
+                const person = personnelList.find(p => {
+                    const displayName = p.name || `${p.rank || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim();
+                    const label = `${displayName} ${p.phone ? '(' + p.phone + ')' : ''}`.trim();
+                    return label === coordinatorRaw || displayName === cleanCoordinatorName || p.name === cleanCoordinatorName || p.name2 === cleanCoordinatorName;
+                });
+
+                if (person) {
+                    const nameVal = person.name || cleanCoordinatorName;
+                    const name2Val = person.name2 || person.name || cleanCoordinatorName;
+
+                    if (document.getElementById('reporterName')) document.getElementById('reporterName').value = nameVal;
+                    if (document.getElementById('opName')) document.getElementById('opName').value = nameVal;
+                    if (document.getElementById('signName')) document.getElementById('signName').value = nameVal;
+                    if (document.getElementById('signfullName')) document.getElementById('signfullName').value = name2Val;
+                    
+                    if (person.email && document.getElementById('opEmail')) {
+                        document.getElementById('opEmail').value = person.email;
+                    }
+                    if ((person.phone || person.num) && document.getElementById('opPhone')) {
+                        document.getElementById('opPhone').value = person.phone || person.num;
+                    }
+                } else if (cleanCoordinatorName) {
+                    if (document.getElementById('reporterName')) document.getElementById('reporterName').value = cleanCoordinatorName;
+                    if (document.getElementById('opName')) document.getElementById('opName').value = cleanCoordinatorName;
+                    if (document.getElementById('signName')) document.getElementById('signName').value = cleanCoordinatorName;
+                    if (document.getElementById('signfullName')) document.getElementById('signfullName').value = cleanCoordinatorName;
+                }
+
+            } catch (err) {
+                console.error("Error loading personnel details:", err);
+                if (cleanCoordinatorName) {
+                    if (document.getElementById('reporterName')) document.getElementById('reporterName').value = cleanCoordinatorName;
+                    if (document.getElementById('opName')) document.getElementById('opName').value = cleanCoordinatorName;
+                    if (document.getElementById('signName')) document.getElementById('signName').value = cleanCoordinatorName;
+                    if (document.getElementById('signfullName')) document.getElementById('signfullName').value = cleanCoordinatorName;
+                }
+            }
+        }
+
+        loadPersonnelDetails();
+
+        // 3. ฟังก์ชันสร้าง PDF / พิมพ์
+        function generatePDF() {
+            const inputs = document.querySelectorAll('.input-box, .check-box');
+            inputs.forEach(el => el.style.background = 'transparent');
+
+            const element = document.getElementById('pdf-content');
+            
+            const opt = {
+                margin:       0,
+                filename:     'VTR1_Permission_Form.pdf',
+                image:        { type: 'jpg', quality: 1 },
+                html2canvas:  { scale: 1, useCORS: true, scrollY: 0 },
+                jsPDF:        { unit: 'px', format: [2484, 3511], orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save()
+            .then(() => {
+                inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.25)');
+            })
+            .catch(err => {
+                console.error(err);
+                window.print();
+                inputs.forEach(el => el.style.background = 'rgba(255, 0, 0, 0.25)');
+            });
+        }
+    </script>
+</body>
+</html>
